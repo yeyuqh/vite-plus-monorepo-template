@@ -1,0 +1,49 @@
+packages:
+  - apps/*
+  - packages/*
+  - packages/admin-core/ui/*
+  - packages/admin-core/effects/*
+
+  - tools/*
+
+catalogMode: prefer
+
+catalog:
+  '@tailwindcss/vite': ^4.3.1
+  '@types/node': ^24
+  typescript: ~6
+  tailwindcss: ^4.3.0
+  vite: npm:@voidzero-dev/vite-plus-core@latest
+  vitest: npm:@voidzero-dev/vite-plus-test@latest
+  vite-plus: latest
+  unplugin-vue: ^7.2.0
+
+overrides:
+  vite: 'catalog:'
+  vitest: 'catalog:'
+
+peerDependencyRules:
+  allowAny:
+    - vite
+    - vitest
+  allowedVersions:
+    vite: '*'
+    vitest: '*'
+
+catalogs:
+  vue3:
+    '@nuxt/ui': ^4.8.2
+    '@vitejs/plugin-vue': ^6.0.6
+    '@vitejs/plugin-vue-jsx': ^5.1.5
+    pinia: ^3.0.4
+    vue: ^3.5.35
+    vue-router: ^5.1.0
+    vite-plugin-vue-devtools: ^8.1.1
+    vite-plugin-vue-layouts-next: ^2.1.0
+    vue-tsc: latest
+
+minimumReleaseAge: 1440
+
+allowBuilds:
+  esbuild: false
+  vue-demi: false

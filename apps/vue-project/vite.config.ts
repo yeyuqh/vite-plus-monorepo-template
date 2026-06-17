@@ -1,0 +1,32 @@
+import { fileURLToPath, URL } from 'node:url'
+
+import { defineConfig } from 'vite-plus'
+import Vue from '@vitejs/plugin-vue'
+import VueJsx from '@vitejs/plugin-vue-jsx'
+import VueDevTools from 'vite-plugin-vue-devtools'
+import VueRouter from 'vue-router/vite'
+import NuxtUI from '@nuxt/ui/vite'
+import Tailwindcss from '@tailwindcss/vite'
+import Layouts from 'vite-plugin-vue-layouts-next'
+
+export default defineConfig({
+  plugins: [
+    VueRouter(),
+    Vue(),
+    VueJsx(),
+    Layouts({
+      layoutsDirs: 'src/layouts',
+      defaultLayout: 'Basic',
+    }),
+    Tailwindcss(),
+    NuxtUI({
+      ui: {},
+    }),
+    VueDevTools(),
+  ],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+})

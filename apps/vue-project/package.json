@@ -1,0 +1,36 @@
+{
+  "name": "vue-project",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "preview": "vp preview",
+    "build-only": "vp build",
+    "type-check": "vue-tsc --build"
+  },
+  "dependencies": {
+    "@monorepo-admin-core/layout-ui": "workspace:*",
+    "@nuxt/ui": "catalog:vue3",
+    "@tailwindcss/vite": "catalog:",
+    "pinia": "catalog:vue3",
+    "tailwindcss": "catalog:",
+    "vue": "catalog:vue3",
+    "vue-router": "catalog:vue3"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@vitejs/plugin-vue": "catalog:vue3",
+    "@vitejs/plugin-vue-jsx": "catalog:vue3",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-vue-devtools": "catalog:vue3",
+    "vite-plugin-vue-layouts-next": "catalog:vue3",
+    "vite-plus": "catalog:",
+    "vue-tsc": "catalog:vue3"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
