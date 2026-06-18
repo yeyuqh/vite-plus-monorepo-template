@@ -1,7 +1,5 @@
 <script setup lang="ts"></script>
 
 <template>
-  <div>13213</div>
+  <div>user</div>
 </template>
-
-<style lang="scss"></style>

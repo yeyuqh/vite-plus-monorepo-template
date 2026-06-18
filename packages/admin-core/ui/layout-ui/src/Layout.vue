@@ -1,7 +1,6 @@
 <script setup lang="ts"></script>
 
 <template>
-  <div>12355555</div>
+  <UButton>55</UButton>
+  <UCard>123123</UCard>
 </template>
-
-<style lang="scss"></style>

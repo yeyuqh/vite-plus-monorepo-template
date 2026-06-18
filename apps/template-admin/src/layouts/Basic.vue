@@ -3,5 +3,7 @@ import { AdminLayout } from '@monorepo-admin-core/layout-ui'
 </script>
 
 <template>
-  <AdminLayout />
+  <UDashboardGroup>
+    <AdminLayout />
+  </UDashboardGroup>
 </template>

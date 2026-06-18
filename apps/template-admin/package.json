@@ -1,5 +1,5 @@
 {
-  "name": "vue-project",
+  "name": "@app/template-admin",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,6 +11,7 @@
     "type-check": "vue-tsc --build"
   },
   "dependencies": {
+    "@monorepo-admin-core/layout-effect": "workspace:*",
     "@monorepo-admin-core/layout-ui": "workspace:*",
     "@nuxt/ui": "catalog:vue3",
     "@tailwindcss/vite": "catalog:",

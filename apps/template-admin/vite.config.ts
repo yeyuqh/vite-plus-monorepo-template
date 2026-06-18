@@ -7,6 +7,7 @@ import VueRouter from 'vue-router/vite'
 import NuxtUI from '@nuxt/ui/vite'
 import Tailwindcss from '@tailwindcss/vite'
 import Layouts from 'vite-plugin-vue-layouts-next'
+
 export default defineConfig({
   plugins: [
     VueRouter(),
@@ -18,6 +19,7 @@ export default defineConfig({
     }),
     Tailwindcss(),
     NuxtUI({
+      scanPackages: ['@monorepo-admin-core/layout-ui'],
       ui: {},
     }),
     VueDevTools(),

@@ -3,11 +3,7 @@ import Vue from 'unplugin-vue/rolldown'
 
 export default defineConfig({
   pack: {
-    dts: {
-      tsgo: false,
-      vue: true,
-    },
-    exports: true,
+    dts: { tsgo: false, vue: true },
     entry: 'src/index.ts',
     unbundle: true,
     platform: 'neutral',
