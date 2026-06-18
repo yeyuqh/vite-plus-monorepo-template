@@ -1,7 +1,9 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import App from '@nuxt/ui/components/App.vue'
+</script>
 
 <template>
-  <UApp>
+  <App>
     <RouterView />
-  </UApp>
+  </App>
 </template>

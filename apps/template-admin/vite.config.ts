@@ -19,8 +19,8 @@ export default defineConfig({
     }),
     Tailwindcss(),
     NuxtUI({
+      autoImport: false,
       scanPackages: ['@monorepo-admin-core/layout-ui'],
-      ui: {},
     }),
     VueDevTools(),
   ],

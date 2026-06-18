@@ -13,13 +13,14 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AuthForm: typeof import('./src/components/AuthForm.vue')['default']
-    NuxtIconStub: typeof import('./src/components/NuxtIconStub.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
-    UApp: typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/App.vue')['default']
     UButton: typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/Button.vue')['default']
-    UCard: typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/Card.vue')['default']
     UDashboardGroup: typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/DashboardGroup.vue')['default']
+    UDashboardNavbar: typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/DashboardNavbar.vue')['default']
+    UDashboardPanel: typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/DashboardPanel.vue')['default']
+    UDashboardSidebar: typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/DashboardSidebar.vue')['default']
+    UDashboardToolbar: typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/DashboardToolbar.vue')['default']
     UserCard: typeof import('./src/components/UserCard.vue')['default']
   }
 }
@@ -27,12 +28,13 @@ declare module 'vue' {
 // For TSX support
 declare global {
   const AuthForm: (typeof import('./src/components/AuthForm.vue'))['default']
-  const NuxtIconStub: (typeof import('./src/components/NuxtIconStub.vue'))['default']
   const RouterLink: (typeof import('vue-router'))['RouterLink']
   const RouterView: (typeof import('vue-router'))['RouterView']
-  const UApp: (typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/App.vue'))['default']
   const UButton: (typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/Button.vue'))['default']
-  const UCard: (typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/Card.vue'))['default']
   const UDashboardGroup: (typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/DashboardGroup.vue'))['default']
+  const UDashboardNavbar: (typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/DashboardNavbar.vue'))['default']
+  const UDashboardPanel: (typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/DashboardPanel.vue'))['default']
+  const UDashboardSidebar: (typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/DashboardSidebar.vue'))['default']
+  const UDashboardToolbar: (typeof import('./../../node_modules/.pnpm/@nuxt+ui@4.8.2_@internationalized+date@3.12.2_@internationalized+number@3.6.7_@tiptap+e_95c32a4361467c73c0782fbc8f73a8ef/node_modules/@nuxt/ui/dist/runtime/components/DashboardToolbar.vue'))['default']
   const UserCard: (typeof import('./src/components/UserCard.vue'))['default']
 }

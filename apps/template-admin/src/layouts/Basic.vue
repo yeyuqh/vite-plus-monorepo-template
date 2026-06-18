@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { AdminLayout } from '@monorepo-admin-core/layout-ui'
+import { BasicLayout } from '@monorepo-admin-core/layout-effect'
 </script>
 
 <template>
-  <UDashboardGroup>
-    <AdminLayout />
-  </UDashboardGroup>
+  <BasicLayout>
+    <RouterView />
+  </BasicLayout>
 </template>

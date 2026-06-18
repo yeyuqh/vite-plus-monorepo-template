@@ -29,3 +29,7 @@ dist-ssr
 !.vscode/
 !.vscode/settings.json
 !.vscode/extensions.json
+
+# Auto-generated type declarations
+auto-imports.d.ts
+components.d.ts
