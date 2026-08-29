@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const SIDEBAR_OVERLAY_EXIT_DURATION = 100
+const LARGE_SCREEN_MEDIA_QUERY = '(min-width: 64rem)'
 type SidebarOverlayCloseReason = 'selection'
 
 const props = withDefaults(
@@ -16,6 +17,8 @@ const props = withDefaults(
 const emit = defineEmits<{
   'update:collapsed': [value: boolean]
 }>()
+
+const mobileOpen = defineModel<boolean>('open', { default: false })
 
 function readPersistedCollapsed() {
   try {
@@ -33,7 +36,11 @@ function persistCollapsed(value: boolean) {
   }
 }
 
-const collapsed = ref(readPersistedCollapsed())
+const collapsedPreference = ref(readPersistedCollapsed())
+const largeScreenQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(LARGE_SCREEN_MEDIA_QUERY) : undefined
+const isBelowLarge = ref(largeScreenQuery ? !largeScreenQuery.matches : false)
+const compactCollapsedOverride = ref<boolean | undefined>()
+const collapsed = computed(() => (isBelowLarge.value ? (compactCollapsedOverride.value ?? true) : collapsedPreference.value))
 const hovered = ref(false)
 const overlayOpen = ref(false)
 let sidebarElement: HTMLElement | undefined
@@ -43,18 +50,34 @@ let overlayCloseTimer: ReturnType<typeof setTimeout> | undefined
 const temporarilyExpanded = computed(() => collapsed.value && (hovered.value || overlayOpen.value))
 const visuallyExpanded = computed(() => !collapsed.value || temporarilyExpanded.value)
 
-watch(
-  collapsed,
-  (value) => {
-    persistCollapsed(value)
-    emit('update:collapsed', value)
-  },
-  { immediate: true },
-)
+watch(collapsedPreference, (value) => persistCollapsed(value), { immediate: true })
+
+watch(collapsed, (value) => emit('update:collapsed', value), { immediate: true })
+
+function updateLargeScreenState(matches: boolean) {
+  const nextIsBelowLarge = !matches
+  if (nextIsBelowLarge === isBelowLarge.value) return
+  isBelowLarge.value = nextIsBelowLarge
+  if (nextIsBelowLarge) compactCollapsedOverride.value = undefined
+}
+
+function handleLargeScreenChange(event: MediaQueryListEvent) {
+  updateLargeScreenState(event.matches)
+}
+
+onMounted(() => {
+  if (!largeScreenQuery) return
+  updateLargeScreenState(largeScreenQuery.matches)
+  if (typeof largeScreenQuery.addEventListener === 'function') largeScreenQuery.addEventListener('change', handleLargeScreenChange)
+  else largeScreenQuery.addListener(handleLargeScreenChange)
+})
 
 onBeforeUnmount(() => {
   cancelPendingOverlayClose()
   cancelOverlaySelectionHold()
+  if (!largeScreenQuery) return
+  if (typeof largeScreenQuery.removeEventListener === 'function') largeScreenQuery.removeEventListener('change', handleLargeScreenChange)
+  else largeScreenQuery.removeListener(handleLargeScreenChange)
 })
 
 function cancelPendingOverlayClose() {
@@ -117,17 +140,38 @@ function setOverlayOpen(value: boolean, closeReason?: SidebarOverlayCloseReason)
 }
 
 function toggleCollapsed() {
-  collapsed.value = !collapsed.value
+  const nextCollapsed = !collapsed.value
+  if (isBelowLarge.value) {
+    compactCollapsedOverride.value = nextCollapsed
+    collapsedPreference.value = nextCollapsed
+    return
+  }
+  collapsedPreference.value = nextCollapsed
 }
+
+function toggleMobileOpen() {
+  mobileOpen.value = !mobileOpen.value
+}
+
+function closeMobileSidebar() {
+  mobileOpen.value = false
+}
+
+function closeMobileSidebarAfterNavigation(event: MouseEvent) {
+  const target = event.target
+  if (target instanceof Element && target.closest('a')) closeMobileSidebar()
+}
+
+defineExpose({ close: closeMobileSidebar, toggle: toggleMobileOpen })
 </script>
 
 <template>
-  <div data-sidebar-space aria-hidden="true" class="hidden h-svh shrink-0 transition-[width] duration-200 ease-out lg:block" :class="collapsed ? 'w-16' : 'w-60'" />
+  <div data-sidebar-space aria-hidden="true" class="hidden h-svh shrink-0 transition-[width] duration-200 ease-out md:block" :class="collapsed ? 'w-16' : 'w-60'" />
 
   <aside
     id="primary-navigation"
     :data-collapsed="collapsed"
-    class="group/sidebar fixed start-0 top-0 z-20 hidden h-svh shrink-0 flex-col overflow-visible bg-transparent [--layout-sidebar-bg:#FCFCFC] transition-[width] duration-200 ease-out after:pointer-events-none after:absolute after:inset-y-0 after:start-0 after:z-0 after:content-[''] after:border-e after:border-default after:bg-(--layout-sidebar-bg) after:transition-[width,box-shadow] after:duration-200 after:ease-out dark:[--layout-sidebar-bg:#1A1A1A] lg:flex"
+    class="group/sidebar fixed inset-s-0 top-0 z-20 hidden h-svh shrink-0 flex-col overflow-visible bg-transparent [--layout-sidebar-bg:#FCFCFC] transition-[width] duration-200 ease-out after:pointer-events-none after:absolute after:inset-y-0 after:inset-s-0 after:z-0 after:content-[''] after:border-e after:border-default after:bg-(--layout-sidebar-bg) after:transition-[width,box-shadow] after:duration-200 after:ease-out dark:[--layout-sidebar-bg:#1A1A1A] md:flex"
     :class="[collapsed ? 'w-16' : 'w-60', visuallyExpanded ? 'after:w-60' : 'after:w-full', temporarilyExpanded ? 'after:shadow-xl' : 'after:shadow-none']"
     @mouseenter="expandTemporarily"
     @mouseleave="collapseTemporarily"
@@ -146,15 +190,15 @@ function toggleCollapsed() {
         </span>
         <UButton
           data-sidebar-collapse
-          :aria-label="collapsed ? '固定侧边栏' : '取消固定侧边栏'"
+          :aria-label="collapsed ? '展开边栏' : '折叠边栏'"
           :aria-hidden="!visuallyExpanded"
-          :icon="collapsed ? 'i-lucide-pin' : 'i-lucide-pin-off'"
+          :icon="collapsed ? 'i-lucide-panel-left-open' : 'i-lucide-panel-left-close'"
           :tabindex="visuallyExpanded ? undefined : -1"
           :title="collapsed ? '固定侧边栏' : '取消固定侧边栏'"
           color="neutral"
           variant="ghost"
-          :ui="{ leadingIcon: 'size-4' }"
-          class="absolute inset-e-0 hidden shrink-0 transition-opacity duration-200 ease-out lg:inline-flex"
+          :ui="{ leadingIcon: 'size-5' }"
+          class="absolute inset-e-0 hidden shrink-0 transition-opacity duration-200 ease-out md:inline-flex"
           :class="visuallyExpanded ? 'opacity-100' : 'pointer-events-none opacity-0'"
           @click="toggleCollapsed"
         />
@@ -178,4 +222,50 @@ function toggleCollapsed() {
       <slot name="footer" :collapsed="collapsed" :opened="visuallyExpanded" :set-overlay-open="setOverlayOpen" />
     </div>
   </aside>
+
+  <UDrawer v-model:open="mobileOpen" title="主导航" description="应用导航" direction="left" :handle="false" :ui="{ content: 'w-60 max-w-[calc(100%-2rem)] md:hidden', overlay: 'md:hidden' }">
+    <template #content>
+      <div data-mobile-sidebar class="flex h-svh w-full flex-col bg-default">
+        <div class="relative flex h-(--ui-header-height) shrink-0 items-center overflow-hidden px-4" data-mobile-slot="header">
+          <div class="relative flex h-8 w-full shrink-0 items-center">
+            <span data-mobile-sidebar-logo class="flex min-w-0 items-center whitespace-nowrap text-highlighted">
+              <span class="flex size-8 shrink-0 items-center justify-center">
+                <img
+                  data-mobile-sidebar-logo-icon
+                  src="https://raw.githubusercontent.com/Koolson/Qure/refs/heads/master/IconSet/Color/Apple.png"
+                  alt=""
+                  class="size-5 object-contain"
+                  aria-hidden="true"
+                />
+              </span>
+              <span class="text-sm font-semibold"> Logo </span>
+            </span>
+            <UButton
+              data-mobile-sidebar-close
+              icon="i-lucide-x"
+              aria-label="关闭边栏"
+              title="关闭边栏"
+              color="neutral"
+              variant="ghost"
+              :ui="{ leadingIcon: 'size-5' }"
+              class="ms-auto shrink-0"
+              @click="closeMobileSidebar"
+            />
+          </div>
+        </div>
+
+        <div
+          class="relative flex flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden px-4 py-2 [mask-image:linear-gradient(to_bottom,transparent_0,black_0.75rem,black_calc(100%_-_0.75rem),transparent_100%)] [scrollbar-color:var(--ui-border-accented)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-corner]:bg-transparent [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--ui-border-accented)]"
+          data-mobile-slot="body"
+          @click="closeMobileSidebarAfterNavigation"
+        >
+          <slot name="menu" :collapsed="false" :opened="true" :set-overlay-open="setOverlayOpen" />
+        </div>
+
+        <div v-if="$slots.footer" class="shrink-0 border-t border-default px-3 py-2.5" data-mobile-slot="footer">
+          <slot name="footer" :collapsed="false" :opened="true" :set-overlay-open="setOverlayOpen" />
+        </div>
+      </div>
+    </template>
+  </UDrawer>
 </template>

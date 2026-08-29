@@ -40,10 +40,23 @@ const menuGroups = computed(() => markActiveAdminMenuGroups(props.menuGroups ?? 
       <AdminRouteContent />
     </slot>
 
-    <template #header>
+    <template #header="{ sidebarOpen, toggleSidebar }">
       <LayoutHeader :breadcrumb-prefix="breadcrumbPrefix" :breadcrumbs="breadcrumbs">
-        <template v-if="$slots['header-toggle']" #toggle="slotProps">
-          <slot name="header-toggle" v-bind="slotProps" />
+        <template #toggle="slotProps">
+          <slot v-if="$slots['header-toggle']" name="header-toggle" v-bind="{ ...slotProps, sidebarOpen, toggleSidebar }" />
+          <UButton
+            v-else
+            data-sidebar-toggle
+            :icon="sidebarOpen ? 'i-lucide-x' : 'i-lucide-menu'"
+            :aria-label="sidebarOpen ? '隐藏边栏' : '显示边栏'"
+            :aria-expanded="sidebarOpen"
+            title="显示或隐藏边栏"
+            color="neutral"
+            variant="ghost"
+            :ui="{ leadingIcon: 'size-5' }"
+            class="md:hidden"
+            @click="toggleSidebar"
+          />
         </template>
 
         <template v-if="$slots['header-left']" #left="slotProps">

@@ -10,7 +10,13 @@ const props = withDefaults(defineProps<LayoutProps>(), { tabbarEnable: true })
 
 const { tabbar } = useLayout(props)
 const sidebarCollapsed = ref(false)
+const mobileSidebarOpen = ref(false)
+const sidebarRef = ref<{ toggle: () => void }>()
 const headerElevated = ref(false)
+
+function toggleSidebar() {
+  sidebarRef.value?.toggle()
+}
 
 function updateHeaderElevation() {
   const scrollTop = Math.max(window.scrollY, document.scrollingElement?.scrollTop ?? 0, document.documentElement.scrollTop)
@@ -28,7 +34,7 @@ onBeforeUnmount(() => document.removeEventListener('scroll', updateHeaderElevati
 
 <template>
   <div class="relative flex min-h-svh w-full bg-default">
-    <LayoutSidebar @update:collapsed="sidebarCollapsed = $event">
+    <LayoutSidebar ref="sidebarRef" v-model:open="mobileSidebarOpen" @update:collapsed="sidebarCollapsed = $event">
       <template #menu="{ collapsed, opened, setOverlayOpen }">
         <slot name="menu" :collapsed="collapsed" :opened="opened" :set-overlay-open="setOverlayOpen" />
       </template>
@@ -41,13 +47,13 @@ onBeforeUnmount(() => document.removeEventListener('scroll', updateHeaderElevati
     <div class="min-w-0 flex-1">
       <div
         data-layout-header-wrapper
-        class="fixed inset-x-0 top-0 z-10 transition-[inset-inline-start,box-shadow] duration-200 ease-out"
-        :class="[sidebarCollapsed ? 'lg:inset-s-16' : 'lg:inset-s-60', headerElevated && 'shadow-[0_16px_24px_var(--ui-bg)]']"
+        class="fixed inset-x-0 top-0 z-10 transition-[inset-inline-start] duration-200 ease-out after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-8 after:bg-(--ui-bg) after:opacity-0 after:transition-opacity after:duration-200 after:ease-out after:content-[''] after:[-webkit-mask-image:linear-gradient(to_bottom,black,transparent)] after:[mask-image:linear-gradient(to_bottom,black,transparent)]"
+        :class="[sidebarCollapsed ? 'md:inset-s-16' : 'md:inset-s-60', headerElevated && 'after:opacity-100']"
       >
-        <slot name="header">
+        <slot name="header" :sidebar-open="mobileSidebarOpen" :toggle-sidebar="toggleSidebar">
           <LayoutHeader>
             <template v-if="$slots['header-toggle']" #toggle="slotProps">
-              <slot name="header-toggle" v-bind="slotProps" />
+              <slot name="header-toggle" v-bind="{ ...slotProps, sidebarOpen: mobileSidebarOpen, toggleSidebar }" />
             </template>
 
             <template v-if="$slots['header-left']" #left="slotProps">

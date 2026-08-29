@@ -21,6 +21,42 @@ const ButtonStub = defineComponent({
   },
 })
 
+const DrawerStub = defineComponent({
+  props: {
+    open: Boolean,
+  },
+  setup(props, { slots }) {
+    return () => (props.open ? h('div', { 'data-drawer': '' }, slots.content?.()) : undefined)
+  },
+})
+
+function mockLargeScreenQuery(initialMatches: boolean) {
+  let matches = initialMatches
+  const listeners = new Set<(event: MediaQueryListEvent) => void>()
+  const query = {
+    get matches() {
+      return matches
+    },
+    media: '(min-width: 64rem)',
+    addEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => listeners.add(listener),
+    removeEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => listeners.delete(listener),
+  } as unknown as MediaQueryList
+  const originalMatchMedia = window.matchMedia
+  const matchMedia = vi.fn<() => MediaQueryList>(() => query)
+
+  Object.defineProperty(window, 'matchMedia', { configurable: true, value: matchMedia })
+
+  return {
+    setMatches(value: boolean) {
+      matches = value
+      listeners.forEach((listener) => listener({ matches: value } as MediaQueryListEvent))
+    },
+    restore() {
+      Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia })
+    },
+  }
+}
+
 function mountSidebar() {
   return mount(LayoutSidebar, {
     props: {
@@ -29,6 +65,7 @@ function mountSidebar() {
     global: {
       stubs: {
         UButton: ButtonStub,
+        UDrawer: DrawerStub,
       },
     },
     slots: {
@@ -56,11 +93,11 @@ test('keeps a fixed desktop sidebar and reserves its expanded or collapsed width
   expect(sidebar.classes()).toEqual(
     expect.arrayContaining([
       'fixed',
-      'start-0',
+      'inset-s-0',
       'top-0',
       'hidden',
       'h-svh',
-      'lg:flex',
+      'md:flex',
       'w-60',
       'after:w-60',
       'after:shadow-none',
@@ -69,7 +106,7 @@ test('keeps a fixed desktop sidebar and reserves its expanded or collapsed width
       'dark:[--layout-sidebar-bg:#1A1A1A]',
     ]),
   )
-  expect(sidebarSpace.classes()).toEqual(expect.arrayContaining(['hidden', 'h-svh', 'lg:block', 'w-60']))
+  expect(sidebarSpace.classes()).toEqual(expect.arrayContaining(['hidden', 'h-svh', 'md:block', 'w-60']))
   expect(header.classes()).toEqual(expect.arrayContaining(['z-10', 'w-60']))
   expect(body.classes()).toEqual(
     expect.arrayContaining([
@@ -90,8 +127,8 @@ test('keeps a fixed desktop sidebar and reserves its expanded or collapsed width
     src: 'https://raw.githubusercontent.com/Koolson/Qure/refs/heads/master/IconSet/Color/Apple.png',
     alt: '',
   })
-  expect(wrapper.getComponent(ButtonStub).props('ui')).toEqual({ leadingIcon: 'size-4' })
-  expect(wrapper.get('[data-sidebar-collapse]').attributes()).toMatchObject({ 'aria-label': '取消固定侧边栏', icon: 'i-lucide-pin-off', title: '取消固定侧边栏' })
+  expect(wrapper.getComponent(ButtonStub).props('ui')).toEqual({ leadingIcon: 'size-5' })
+  expect(wrapper.get('[data-sidebar-collapse]').attributes()).toMatchObject({ 'aria-label': '折叠边栏', icon: 'i-lucide-panel-left-close', title: '取消固定侧边栏' })
 
   await wrapper.get('[data-sidebar-collapse]').trigger('click')
 
@@ -122,7 +159,7 @@ test('temporarily expands a collapsed sidebar for hover and menu overlays', asyn
   expect(footer.classes()).toContain('w-60')
   expect(wrapper.get('output').attributes()).toMatchObject({ 'data-collapsed': 'true', 'data-opened': 'true' })
   expect(wrapper.get('[data-sidebar-logo-text]').classes()).toContain('opacity-100')
-  expect(wrapper.get('[data-sidebar-collapse]').attributes()).toMatchObject({ 'aria-label': '固定侧边栏', icon: 'i-lucide-pin' })
+  expect(wrapper.get('[data-sidebar-collapse]').attributes()).toMatchObject({ 'aria-label': '展开边栏', icon: 'i-lucide-panel-left-open' })
 
   await wrapper.get('[data-menu-overlay-open]').trigger('click')
   await sidebar.trigger('mouseleave')
@@ -152,6 +189,7 @@ test('restores the persisted collapsed state when remounted', () => {
     global: {
       stubs: {
         UButton: ButtonStub,
+        UDrawer: DrawerStub,
       },
     },
     slots: {
@@ -163,4 +201,38 @@ test('restores the persisted collapsed state when remounted', () => {
   expect(wrapper.get('output').attributes()).toMatchObject({ 'data-collapsed': 'true', 'data-opened': 'false' })
   expect(wrapper.get('[data-sidebar-logo-text]').classes()).toContain('opacity-0')
   expect(wrapper.get('[data-sidebar-collapse]').attributes()).toMatchObject({ 'aria-hidden': 'true', tabindex: '-1' })
+})
+
+test('opens the mobile sidebar through the exposed toggle and closes it from the drawer', async () => {
+  const wrapper = mountSidebar()
+
+  expect(wrapper.find('[data-mobile-sidebar]').exists()).toBe(false)
+
+  ;(wrapper.vm as unknown as { toggle: () => void }).toggle()
+  await wrapper.vm.$nextTick()
+
+  expect(wrapper.find('[data-mobile-sidebar]').exists()).toBe(true)
+  expect(wrapper.get('[data-mobile-slot="body"] output').attributes()).toMatchObject({ 'data-collapsed': 'false', 'data-opened': 'true' })
+
+  await wrapper.get('[data-mobile-sidebar-close]').trigger('click')
+  expect(wrapper.find('[data-mobile-sidebar]').exists()).toBe(false)
+})
+
+test('defaults to a collapsed sidebar below lg and restores the expanded state above it', async () => {
+  const media = mockLargeScreenQuery(false)
+  const wrapper = mountSidebar()
+
+  expect(wrapper.get('aside').attributes('data-collapsed')).toBe('true')
+  expect(wrapper.get('[data-sidebar-space]').classes()).toContain('w-16')
+  expect(wrapper.get('output').attributes()).toMatchObject({ 'data-collapsed': 'true', 'data-opened': 'false' })
+
+  media.setMatches(true)
+  await wrapper.vm.$nextTick()
+
+  expect(wrapper.get('aside').attributes('data-collapsed')).toBe('false')
+  expect(wrapper.get('[data-sidebar-space]').classes()).toContain('w-60')
+  expect(wrapper.get('output').attributes()).toMatchObject({ 'data-collapsed': 'false', 'data-opened': 'true' })
+
+  media.restore()
+  wrapper.unmount()
 })
