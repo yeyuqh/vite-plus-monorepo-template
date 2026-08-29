@@ -55,7 +55,7 @@ const accessFileRoutes: RouteRecordRaw[] = [
         component,
         path: 'settings',
         children: [
-          { component, path: 'level-three' },
+          { component, path: 'overview' },
           { component, path: 'theme' },
         ],
       },
@@ -105,13 +105,13 @@ const backendMenus = [
         children: [
           {
             id: 'system-settings-level-three',
-            path: 'level-three',
-            meta: { authority: ['admin'], icon: 'i-lucide-list-tree', order: 10, title: '三级菜单示例' },
+            path: 'overview',
+            meta: { authority: ['admin'], icon: 'i-lucide-list-tree', order: 10, title: '设置概览' },
           },
           {
             id: 'system-settings-theme',
             path: 'theme',
-            meta: { activePath: '/system/settings', authority: ['admin'], hideInMenu: true, tabPath: '/system/settings', title: '主题设置' },
+            meta: { activePath: '/system/settings/overview', authority: ['admin'], hideInMenu: true, tabPath: '/system/settings/overview', title: '主题设置' },
           },
         ],
       },
@@ -165,9 +165,11 @@ test('keeps real page component when visible forbidden route authority matches',
 
 test('keeps hidden authorized child routes accessible without rendering them in the menu', () => {
   const result = resolveAdminAccess(accessFileRoutes, backendMenus, ['admin'])
+  const themeRoute = result.navigationRoutes.find((route) => route.path === '/system/settings/theme')
 
   expect(result.routePathSet.has('/system/settings/theme')).toBe(true)
   expect(JSON.stringify(result.menuGroups)).not.toContain('/system/settings/theme')
+  expect(themeRoute).toMatchObject({ activePath: '/system/settings/overview', tabPath: '/system/settings/overview' })
 })
 
 test('keeps visible third-level routes nested in the menu tree', () => {
@@ -175,12 +177,12 @@ test('keeps visible third-level routes nested in the menu tree', () => {
   const systemMenu = result.menuGroups.flatMap((group) => group.children).find((item) => item.id === '/system')
   const settingsMenu = systemMenu?.children?.find((item) => item.id === '/system/settings')
 
-  expect(result.routePathSet.has('/system/settings/level-three')).toBe(true)
+  expect(result.routePathSet.has('/system/settings/overview')).toBe(true)
   expect(settingsMenu?.children).toContainEqual(
     expect.objectContaining({
-      id: '/system/settings/level-three',
-      path: '/system/settings/level-three',
-      title: '三级菜单示例',
+      id: '/system/settings/overview',
+      path: '/system/settings/overview',
+      title: '设置概览',
     }),
   )
 })

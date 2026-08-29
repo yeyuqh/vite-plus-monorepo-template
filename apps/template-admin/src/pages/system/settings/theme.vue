@@ -1,15 +1,4 @@
 <script setup lang="ts">
-definePage({
-  meta: {
-    title: '主题设置',
-    description: '主题色、圆角和显示密度',
-    hideInMenu: true,
-    activePath: '/system/settings',
-    order: 20,
-    tabPath: '/system/settings',
-  },
-})
-
 const themeSettings = [
   { label: '主题色', value: 'Emerald' },
   { label: '圆角', value: 'Medium' },

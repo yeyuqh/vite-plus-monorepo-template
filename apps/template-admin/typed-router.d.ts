@@ -120,20 +120,20 @@ declare module 'vue-router/auto-routes' {
       '/system/settings',
       Record<never, never>,
       Record<never, never>,
-      | '/system/settings/level-three'
       | '/system/settings/notification'
+      | '/system/settings/overview'
       | '/system/settings/theme'
-    >,
-    '/system/settings/level-three': RouteRecordInfo<
-      '/system/settings/level-three',
-      '/system/settings/level-three',
-      Record<never, never>,
-      Record<never, never>,
-      | never
     >,
     '/system/settings/notification': RouteRecordInfo<
       '/system/settings/notification',
       '/system/settings/notification',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/system/settings/overview': RouteRecordInfo<
+      '/system/settings/overview',
+      '/system/settings/overview',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -271,25 +271,25 @@ declare module 'vue-router/auto-routes' {
     'src/pages/system/settings.vue': {
       routes:
         | '/system/settings'
-        | '/system/settings/level-three'
         | '/system/settings/notification'
+        | '/system/settings/overview'
         | '/system/settings/theme'
       views:
         | 'default'
       pathParamNames:
         | never
     }
-    'src/pages/system/settings/level-three.vue': {
+    'src/pages/system/settings/notification.vue': {
       routes:
-        | '/system/settings/level-three'
+        | '/system/settings/notification'
       views:
         | never
       pathParamNames:
         | never
     }
-    'src/pages/system/settings/notification.vue': {
+    'src/pages/system/settings/overview.vue': {
       routes:
-        | '/system/settings/notification'
+        | '/system/settings/overview'
       views:
         | never
       pathParamNames:

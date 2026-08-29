@@ -1,14 +1,4 @@
 <script setup lang="ts">
-definePage({
-  meta: {
-    title: '通知设置',
-    hideInMenu: true,
-    activePath: '/system/settings',
-    order: 10,
-    tabPath: '/system/settings',
-  },
-})
-
 const channels = [
   { label: '邮件通知', status: '已开启', description: '用于发送账号安全、审批结果和系统公告。' },
   { label: '站内消息', status: '已开启', description: '登录后在消息中心展示待办提醒。' },
