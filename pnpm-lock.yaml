@@ -279,6 +279,9 @@ importers:
       '@monorepo-admin-core/common-ui':
         specifier: workspace:*
         version: link:../../packages/@admin-core/ui/common-ui
+      '@monorepo-admin-core/hooks':
+        specifier: workspace:*
+        version: link:../../packages/@admin-core/effects/hooks
       '@monorepo-admin-core/layout-effect':
         specifier: workspace:*
         version: link:../../packages/@admin-core/effects/layouts
@@ -297,6 +300,9 @@ importers:
       '@monorepo/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@monorepo/vite-plugin-app-config':
+        specifier: workspace:*
+        version: link:../../packages/vite-plugin-app-config
       '@monorepo/vite-plugin-app-loading':
         specifier: workspace:*
         version: link:../../packages/vite-plugin-app-loading
@@ -528,6 +534,17 @@ importers:
         specifier: catalog:vue3
         version: 5.2.0(@voidzero-dev/vite-plus-core@0.2.9(@types/node@25.9.5)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.12)(typescript@6.0.3)(yaml@2.9.0))(@vue/compiler-sfc@3.5.41)(esbuild@0.28.1)(pinia@3.0.4(typescript@6.0.3)(vue@3.5.41(typescript@6.0.3)))(rolldown@1.1.4)(vue@3.5.41(typescript@6.0.3))
 
+  packages/@admin-core/effects/hooks:
+    dependencies:
+      '@monorepo-admin-core/types':
+        specifier: workspace:*
+        version: link:../../types
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@0.2.9
+        version: '@voidzero-dev/vite-plus-core@0.2.9(@types/node@25.9.5)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.12)(typescript@6.0.3)(yaml@2.9.0)'
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.9(@types/node@25.9.5)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.9(@types/node@25.9.5)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.12)(typescript@6.0.3)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.11.2)(jiti@2.7.0)(tsx@4.23.12)(typescript@6.0.3)(yaml@2.9.0)
 
   packages/@admin-core/effects/layouts:
     dependencies:
@@ -842,6 +859,18 @@ importers:
       zod:
         specifier: catalog:utils
         version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.2
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.9(@types/node@24.13.2)(@vitest/coverage-v8@4.1.10)(esbuild@0.28.1)(happy-dom@20.11.2)(jiti@2.7.0)(tsx@4.23.12)(typescript@6.0.3)(vite@8.1.3(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))(yaml@2.9.0)
+
+  packages/vite-plugin-app-config:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

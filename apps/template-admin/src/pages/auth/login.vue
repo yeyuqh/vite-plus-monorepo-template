@@ -6,10 +6,11 @@ import Cap from 'cap-widget'
 import { z } from 'zod'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { resolveAdminApiURL } from '@/config/app'
+import { resolvePostLoginPath } from '@/router/access'
 import { useAdminAccessStore } from '@/stores/access'
 import { useAdminAuthStore } from '@/stores/auth'
 import { useAdminUserStore } from '@/stores/user'
-import { resolvePostLoginPath } from '@/router/access'
 
 definePage({
   meta: {
@@ -88,7 +89,7 @@ async function handleLogin(event: FormSubmitEvent<Credentials>) {
 
 function getCaptchaClient() {
   if (!captchaClient) {
-    captchaClient = new Cap({ apiEndpoint: '/api/admin/auth/' })
+    captchaClient = new Cap({ apiEndpoint: resolveAdminApiURL('/admin/auth/') })
     captchaClient.addEventListener('progress', (event: CapProgressEvent) => {
       captchaProgress.value = event.detail.progress
     })

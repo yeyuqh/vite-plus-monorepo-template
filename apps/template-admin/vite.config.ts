@@ -7,6 +7,7 @@ import VueRouter from 'vue-router/vite'
 import NuxtUI from '@nuxt/ui/vite'
 import Tailwindcss from '@tailwindcss/vite'
 import Layouts from 'vite-plugin-vue-layouts-next'
+import { viteInjectAppConfigPlugin } from '@monorepo/vite-plugin-app-config'
 import { viteInjectAppLoadingPlugin } from '@monorepo/vite-plugin-app-loading'
 
 const appRoot = fileURLToPath(new URL('.', import.meta.url))
@@ -16,6 +17,7 @@ export default defineConfig(async ({ command, mode }) => {
 
   return {
     plugins: [
+      await viteInjectAppConfigPlugin({ env, isBuild: command === 'build', root: appRoot }),
       await viteInjectAppLoadingPlugin({ env, isBuild: command === 'build', root: appRoot, themeStorageKey: 'vueuse-color-scheme' }),
 
       VueRouter(),
