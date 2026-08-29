@@ -2,7 +2,7 @@ import { defineConfig, loadEnv } from 'vite-plus'
 import { fileURLToPath, URL } from 'node:url'
 import Vue from '@vitejs/plugin-vue'
 import VueJsx from '@vitejs/plugin-vue-jsx'
-import VueDevTools from 'vite-plugin-vue-devtools'
+// import VueDevTools from 'vite-plugin-vue-devtools'
 import VueRouter from 'vue-router/vite'
 import NuxtUI from '@nuxt/ui/vite'
 import Tailwindcss from '@tailwindcss/vite'
@@ -31,7 +31,7 @@ export default defineConfig(async ({ command, mode }) => {
           colors: { neutral: 'neutral' },
           dropdownMenu: {
             slots: {
-              content: 'z-20',
+              content: 'z-60',
             },
           },
           drawer: {
@@ -52,6 +52,16 @@ export default defineConfig(async ({ command, mode }) => {
               overlay: 'z-40',
             },
           },
+          select: {
+            slots: {
+              content: 'z-60',
+            },
+          },
+          selectMenu: {
+            slots: {
+              content: 'z-60',
+            },
+          },
           slideover: {
             slots: {
               content: 'z-50',
@@ -61,7 +71,7 @@ export default defineConfig(async ({ command, mode }) => {
         },
         scanPackages: ['@monorepo-admin-core/common-ui', '@monorepo-admin-core/layout-ui', '@monorepo-admin-core/tabs-ui', '@monorepo-admin-core/layout-effect'],
       }),
-      VueDevTools(),
+      // VueDevTools(),
     ],
     resolve: {
       alias: {

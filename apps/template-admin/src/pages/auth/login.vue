@@ -150,8 +150,8 @@ function useDemoAccount(type: 'admin' | 'user') {
     <UCard class="w-full max-w-sm shadow-lg">
       <template #header>
         <div>
-          <h1 class="text-xl font-semibold text-highlighted">Template Admin</h1>
-          <p class="mt-1 text-sm text-muted">接口菜单驱动的权限路由演示</p>
+          <h1 class="text-xl font-semibold text-highlighted">登录</h1>
+          <!-- <p class="mt-1 text-sm text-muted">接口菜单驱动的权限路由演示</p> -->
         </div>
       </template>
 
@@ -176,7 +176,6 @@ function useDemoAccount(type: 'admin' | 'user') {
 
               <div class="min-w-0 flex-1">
                 <p class="text-sm font-medium text-default">{{ captchaLabel }}</p>
-                <p class="mt-0.5 text-xs text-muted">通过本地工作量证明确认当前操作</p>
               </div>
 
               <UButton

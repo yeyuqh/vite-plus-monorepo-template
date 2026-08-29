@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Page } from '@monorepo-admin-core/common-ui'
+
 definePage({
   meta: {
     title: '工作台',
@@ -19,17 +21,19 @@ const metrics = [
 </script>
 
 <template>
-  <div class="p-6 space-y-6">
-    <div>
-      <h1 class="text-xl font-semibold text-highlighted">工作台</h1>
-      <p class="mt-1 text-sm text-muted">Dashboard overview</p>
-    </div>
+  <Page>
+    <div class="p-6 space-y-6">
+      <div>
+        <h1 class="text-xl font-semibold text-highlighted">工作台</h1>
+        <p class="mt-1 text-sm text-muted">Dashboard overview</p>
+      </div>
 
-    <div class="grid gap-4 md:grid-cols-3">
-      <div v-for="metric in metrics" :key="metric.label" class="rounded-md border border-default bg-default p-4">
-        <div class="text-sm text-muted">{{ metric.label }}</div>
-        <div class="mt-2 text-2xl font-semibold text-highlighted">{{ metric.value }}</div>
+      <div class="grid gap-4 md:grid-cols-3" v-for="n in 50">
+        <div v-for="metric in metrics" :key="metric.label" class="rounded-md border border-default bg-default p-4">
+          <div class="text-sm text-muted">{{ metric.label }}</div>
+          <div class="mt-2 text-2xl font-semibold text-highlighted">{{ metric.value }}</div>
+        </div>
       </div>
     </div>
-  </div>
+  </Page>
 </template>
