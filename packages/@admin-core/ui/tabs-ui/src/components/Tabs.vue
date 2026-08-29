@@ -168,7 +168,7 @@ function syncLocalTabs(tabs: AdminTabItem[]) {
       @transitionend.self="tabTransition.handleTabTransitionEnd($event, tab.key)"
     >
       <div class="flex h-full min-w-0 flex-1 items-center justify-center overflow-hidden">
-        <div class="flex w-full min-w-0 items-center overflow-hidden px-3">
+        <div class="flex w-full min-w-0 items-center overflow-hidden pr-3 pl-3.5">
           <div class="tab-primary-content flex min-w-0 flex-1 items-center overflow-hidden">
             <UIcon v-if="typeof tab.icon === 'string' && tab.icon.startsWith('i-')" class="tab-leading-icon mr-2 shrink-0 text-muted group-[.is-active]/tab:text-default" :name="tab.icon" size="18" />
             <picture v-else-if="isTabImageIcon(tab.icon)" class="tab-leading-icon shrink-0">

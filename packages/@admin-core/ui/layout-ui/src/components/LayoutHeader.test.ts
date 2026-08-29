@@ -37,7 +37,7 @@ function mountHeader(slots = {}) {
 test('uses the dashboard navbar standalone without its dashboard toggle', () => {
   const wrapper = mountHeader()
 
-  expect(wrapper.getComponent(DashboardNavbarStub).props()).toMatchObject({ toggle: false, ui: { root: 'bg-[#FCFCFC] dark:bg-[#1A1A1A]' } })
+  expect(wrapper.getComponent(DashboardNavbarStub).props()).toMatchObject({ toggle: false, ui: { root: 'bg-[#FCFCFC] dark:bg-[#1A1A1A] pl-2!' } })
 })
 
 test('forwards the toggle, left and right navbar slots', () => {

@@ -1,7 +1,7 @@
 <script setup lang="ts"></script>
 
 <template>
-  <UDashboardNavbar :toggle="false" :ui="{ root: 'bg-[#FCFCFC] dark:bg-[#1A1A1A]' }">
+  <UDashboardNavbar :toggle="false" :ui="{ root: 'bg-[#FCFCFC] dark:bg-[#1A1A1A] pl-2!' }">
     <template v-if="$slots.toggle" #toggle="slotProps">
       <slot name="toggle" v-bind="slotProps" />
     </template>

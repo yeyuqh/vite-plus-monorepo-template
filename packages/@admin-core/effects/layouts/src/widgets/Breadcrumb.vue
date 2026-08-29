@@ -14,7 +14,7 @@ const props = defineProps<{
 
 const items = computed<LayoutBreadcrumbNavigationItem[]>(() =>
   [...(props.breadcrumbPrefix ?? []), ...(props.breadcrumbs ?? [])].map((item) => ({
-    icon: typeof item.icon === 'string' ? item.icon : undefined,
+    icon: typeof item.icon === 'string' ? item.icon : void 0,
     label: item.title,
     menuIcon: item.icon,
     to: item.path,
@@ -32,7 +32,7 @@ function isBreadcrumbImageIcon(icon: unknown): icon is AdminMenuImageIcon {
 </script>
 
 <template>
-  <UBreadcrumb v-if="items.length" class="hidden sm:block" :items="items">
+  <UBreadcrumb v-if="items.length" class="hidden sm:block pl-0 md:pl-1.5" :items="items">
     <template #item-leading="{ active, item }">
       <UIcon v-if="typeof item.menuIcon === 'string' && item.menuIcon.startsWith('i-')" :class="{ 'text-default': active }" :name="item.menuIcon" size="18" />
       <picture v-else-if="isBreadcrumbImageIcon(item.menuIcon)" class="flex size-4.5 shrink-0 items-center justify-center">
