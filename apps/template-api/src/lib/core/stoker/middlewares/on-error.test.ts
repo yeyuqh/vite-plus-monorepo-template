@@ -1,4 +1,4 @@
-import path from 'node:path'
+import { Context } from 'hono'
 import { describe, expect, it } from 'vite-plus/test'
 
 import env from '@/env'
@@ -7,7 +7,6 @@ import onError from './on-error.js'
 
 describe('onError', () => {
   it('should use NODE_ENV from context if defined', async () => {
-    const { Context } = await import(path.join(process.cwd(), 'node_modules/hono/dist/context.js'))
     const req = new Request('http://localhost/')
     const context = new Context(req)
     context.env = {
@@ -26,7 +25,6 @@ describe('onError', () => {
   })
 
   it('should use NODE_ENV from process.env otherwise', async () => {
-    const { Context } = await import(path.join(process.cwd(), 'node_modules/hono/dist/context.js'))
     const req = new Request('http://localhost/')
     const context = new Context(req)
     env.NODE_ENV = 'production'

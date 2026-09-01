@@ -6,6 +6,9 @@ export default defineConfig({
   staged: {
     '*': 'vp check --fix',
   },
+  test: {
+    projects: ['apps/*/vite.config.ts', 'packages/**/vite.config.ts'],
+  },
   fmt: {
     semi: false,
     singleQuote: true,

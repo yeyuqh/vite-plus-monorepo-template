@@ -67,7 +67,7 @@ export default defineConfig(({ mode }) => {
         }
       : {
           env: testEnv,
-          include: ['src/**/*.test.ts'],
+          include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
           exclude: ['src/**/*.integration.test.ts'],
         },
     plugins: [

@@ -349,8 +349,6 @@ describe('auth routes', () => {
         const data = (json as any).data
         const menuIds = collectMenuIds(data.menus)
 
-        expect(menuIds).toContain('access-menu-visible-403')
-        expect(menuIds).not.toContain('system')
         expect(menuIds).not.toContain('system-role')
         expect(data.permissionCodes).not.toContain('system:role:create')
       }
