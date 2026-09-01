@@ -1,8 +1,6 @@
 {
   "id": "9b832df6-2268-48b5-8f31-84b499a89eee",
-  "prevIds": [
-    "a7badbdd-71a3-48a6-80be-3162352c1ea4"
-  ],
+  "prevIds": ["a7badbdd-71a3-48a6-80be-3162352c1ea4"],
   "version": "8",
   "dialect": "postgres",
   "ddl": [
@@ -1981,14 +1979,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "menu_id"
-      ],
+      "columns": ["menu_id"],
       "schemaTo": "public",
       "tableTo": "system_menus",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "system_menu_roles_menu_id_system_menus_id_fkey",
@@ -1998,14 +1992,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "role_id"
-      ],
+      "columns": ["role_id"],
       "schemaTo": "public",
       "tableTo": "system_roles",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "system_menu_roles_role_id_system_roles_id_fkey",
@@ -2015,14 +2005,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "parent_id"
-      ],
+      "columns": ["parent_id"],
       "schemaTo": "public",
       "tableTo": "system_menus",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "system_menus_parent_id_system_menus_id_fkey",
@@ -2032,14 +2018,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "schemaTo": "public",
       "tableTo": "system_users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "system_user_roles_user_id_system_users_id_fkey",
@@ -2049,14 +2031,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "role_id"
-      ],
+      "columns": ["role_id"],
       "schemaTo": "public",
       "tableTo": "system_roles",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "system_user_roles_role_id_system_roles_id_fkey",
@@ -2065,12 +2043,7 @@
       "table": "system_user_roles"
     },
     {
-      "columns": [
-        "ptype",
-        "v0",
-        "v1",
-        "v2"
-      ],
+      "columns": ["ptype", "v0", "v1", "v2"],
       "nameExplicit": true,
       "name": "casbin_rule_pkey",
       "entityType": "pks",
@@ -2078,10 +2051,7 @@
       "table": "casbin_rule"
     },
     {
-      "columns": [
-        "menu_id",
-        "role_id"
-      ],
+      "columns": ["menu_id", "role_id"],
       "nameExplicit": true,
       "name": "system_menu_roles_pkey",
       "entityType": "pks",
@@ -2089,10 +2059,7 @@
       "table": "system_menu_roles"
     },
     {
-      "columns": [
-        "user_id",
-        "role_id"
-      ],
+      "columns": ["user_id", "role_id"],
       "nameExplicit": false,
       "name": "system_user_roles_pkey",
       "entityType": "pks",
@@ -2100,9 +2067,7 @@
       "table": "system_user_roles"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "system_dicts_pkey",
       "schema": "public",
@@ -2110,9 +2075,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "system_menus_pkey",
       "schema": "public",
@@ -2120,9 +2083,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "system_params_pkey",
       "schema": "public",
@@ -2130,9 +2091,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "system_roles_pkey",
       "schema": "public",
@@ -2140,9 +2099,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "system_users_pkey",
       "schema": "public",
@@ -2150,9 +2107,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "client_users_pkey",
       "schema": "public",
@@ -2161,9 +2116,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "username"
-      ],
+      "columns": ["username"],
       "nullsNotDistinct": false,
       "name": "client_users_username_unique",
       "entityType": "uniques",
@@ -2172,9 +2125,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "mobile"
-      ],
+      "columns": ["mobile"],
       "nullsNotDistinct": false,
       "name": "client_users_mobile_unique",
       "entityType": "uniques",
@@ -2183,9 +2134,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "email"
-      ],
+      "columns": ["email"],
       "nullsNotDistinct": false,
       "name": "client_users_email_unique",
       "entityType": "uniques",
@@ -2194,9 +2143,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "wx_unionid"
-      ],
+      "columns": ["wx_unionid"],
       "nullsNotDistinct": false,
       "name": "client_users_wx_unionid_unique",
       "entityType": "uniques",
@@ -2205,9 +2152,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "qq_unionid"
-      ],
+      "columns": ["qq_unionid"],
       "nullsNotDistinct": false,
       "name": "client_users_qq_unionid_unique",
       "entityType": "uniques",
@@ -2216,9 +2161,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "ali_openid"
-      ],
+      "columns": ["ali_openid"],
       "nullsNotDistinct": false,
       "name": "client_users_ali_openid_unique",
       "entityType": "uniques",
@@ -2227,9 +2170,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "apple_openid"
-      ],
+      "columns": ["apple_openid"],
       "nullsNotDistinct": false,
       "name": "client_users_apple_openid_unique",
       "entityType": "uniques",
@@ -2238,9 +2179,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "my_invite_code"
-      ],
+      "columns": ["my_invite_code"],
       "nullsNotDistinct": false,
       "name": "client_users_my_invite_code_unique",
       "entityType": "uniques",
@@ -2249,9 +2188,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "code"
-      ],
+      "columns": ["code"],
       "nullsNotDistinct": false,
       "name": "system_dicts_code_key",
       "schema": "public",
@@ -2260,9 +2197,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "key"
-      ],
+      "columns": ["key"],
       "nullsNotDistinct": false,
       "name": "system_params_key_key",
       "schema": "public",
@@ -2271,9 +2206,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "username"
-      ],
+      "columns": ["username"],
       "nullsNotDistinct": false,
       "name": "system_users_username_key",
       "schema": "public",

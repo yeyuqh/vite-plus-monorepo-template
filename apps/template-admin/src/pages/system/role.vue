@@ -328,19 +328,20 @@ onMounted(() => Promise.all([loadRoles(), loadAllRoles()]))
     </div>
 
     <UTable :data="roles" :columns="columns" :loading="loading" sticky="header" class="min-h-0 flex-1">
-      <template #name-cell="{ row }"
-        ><div>
+      <template #name-cell="{ row }">
+        <div>
           <div class="font-medium text-default">{{ row.original.name }}</div>
           <div class="max-w-72 truncate text-xs text-muted">{{ row.original.description || '暂无描述' }}</div>
-        </div></template
-      >
-      <template #parentRoles-cell="{ row }"
-        ><div class="flex flex-wrap gap-1">
+        </div>
+      </template>
+      <template #parentRoles-cell="{ row }">
+        <div class="flex flex-wrap gap-1">
           <UBadge v-for="parent in row.original.parentRoles" :key="parent" :label="parent" color="info" variant="subtle" /><span v-if="!row.original.parentRoles?.length" class="text-muted">—</span>
-        </div></template
-      >
-      <template #status-cell="{ row }"><UBadge :label="row.original.status === 'ENABLED' ? '启用' : '禁用'" :color="row.original.status === 'ENABLED' ? 'success' : 'neutral'" variant="subtle"
-      /></template>
+        </div>
+      </template>
+      <template #status-cell="{ row }">
+        <UBadge :label="row.original.status === 'ENABLED' ? '启用' : '禁用'" :color="row.original.status === 'ENABLED' ? 'success' : 'neutral'" variant="subtle" />
+      </template>
       <template #actions-cell="{ row }">
         <div class="flex justify-end gap-1">
           <UButton
