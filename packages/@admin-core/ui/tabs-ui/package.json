@@ -44,6 +44,7 @@
     "vue": "catalog:vue3"
   },
   "devDependencies": {
+    "sass": "catalog:",
     "unplugin-vue": "catalog:"
   }
 }

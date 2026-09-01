@@ -1,96 +1,22 @@
 <script setup lang="ts">
 import type { AdminMenuImageIcon, AdminTabItem } from '@monorepo-admin-core/types'
-import { computed, nextTick, ref, watch } from 'vue'
 import { cn } from '@monorepo/shared/utils'
-import { useTabTransition } from './use-tab-transition'
 
-const TAB_BASIS = '15rem'
-
-const props = withDefaults(
-  defineProps<{
-    activeKey: string
-    tabs: AdminTabItem[]
-    widthTransition?: boolean
-  }>(),
-  {
-    widthTransition: true,
-  },
-)
+const props = defineProps<{
+  activeKey: string
+  tabs: AdminTabItem[]
+}>()
 
 const emit = defineEmits<{
   close: [key: string]
   select: [key: string]
 }>()
 
-const tabTransition = useTabTransition({ onClosed: finishTabClose, tabBasis: TAB_BASIS })
-
-const hasHydratedTabs = ref(false)
-const localTabs = ref<AdminTabItem[]>([])
-const pendingCloseTabIds = ref<Record<string, true>>({})
-const logicalTabCount = computed(() => localTabs.value.filter((tab) => !pendingCloseTabIds.value[tab.key]).length)
-
-watch(
-  () => props.tabs,
-  async (tabs, previousTabs = []) => {
-    if (!hasHydratedTabs.value) {
-      localTabs.value = tabs.map((tab) => ({ ...tab }))
-      hasHydratedTabs.value = true
-      return
-    }
-
-    const previousKeys = new Set(previousTabs.map((tab) => tab.key))
-
-    if (props.widthTransition) {
-      for (const tab of tabs) {
-        if (!previousKeys.has(tab.key)) {
-          tabTransition.prepareTabOpenTransition(tab.key)
-        }
-      }
-    }
-
-    syncLocalTabs(tabs)
-
-    await nextTick()
-
-    if (props.widthTransition) {
-      for (const tab of tabs) {
-        if (!previousKeys.has(tab.key)) {
-          tabTransition.startTabOpenTransition(tab.key)
-        }
-      }
-    }
-  },
-  { immediate: true },
-)
-
-const activeTabKey = computed(() => props.activeKey)
-
 function closeTab(key: string) {
-  const index = localTabs.value.findIndex((tab) => tab.key === key)
-  const tab = localTabs.value[index]
+  const tab = props.tabs.find((tab) => tab.key === key)
   if (!tab || !isTabClosable(tab)) return
 
-  if (!props.widthTransition) {
-    localTabs.value = localTabs.value.filter((tab) => tab.key !== key)
-    emit('close', key)
-    return
-  }
-
-  const started = tabTransition.startTabCloseTransition(key)
-  if (!started) return
-
-  pendingCloseTabIds.value = {
-    ...pendingCloseTabIds.value,
-    [key]: true,
-  }
-
   emit('close', key)
-}
-
-function finishTabClose(key: string) {
-  const { [key]: _removedTabId, ...nextPendingCloseTabIds } = pendingCloseTabIds.value
-  pendingCloseTabIds.value = nextPendingCloseTabIds
-  localTabs.value = localTabs.value.filter((tab) => tab.key !== key)
 }
 
 function selectTab(key: string) {
@@ -99,18 +25,7 @@ function selectTab(key: string) {
 }
 
 function isTabClosable(tab: AdminTabItem) {
-  if (tab.closable === false) return false
-  if (pendingCloseTabIds.value[tab.key]) return true
-
-  return logicalTabCount.value > 1
-}
-
-function isActiveTab(tab: AdminTabItem) {
-  return tab.key === activeTabKey.value
-}
-
-function getTabStyle(key: string) {
-  return tabTransition.getTabTransitionStyle(key, TAB_BASIS)
+  return tab.closable !== false && props.tabs.length > 1
 }
 
 function getTabImageIcon(icon: unknown, theme: 'light' | 'dark' = 'light'): string {
@@ -122,50 +37,23 @@ function isTabImageIcon(icon: unknown): icon is AdminMenuImageIcon {
   return typeof icon === 'object' && icon !== null && 'light' in icon
 }
 
-function syncLocalTabs(tabs: AdminTabItem[]) {
-  const nextTabsByKey = new Map(tabs.map((tab) => [tab.key, { ...tab }]))
-  const nextLocalTabs: AdminTabItem[] = []
-
-  for (const currentTab of localTabs.value) {
-    const nextTab = nextTabsByKey.get(currentTab.key)
-    if (nextTab) {
-      nextLocalTabs.push(nextTab)
-      nextTabsByKey.delete(currentTab.key)
-      continue
-    }
-
-    if (pendingCloseTabIds.value[currentTab.key]) {
-      nextLocalTabs.push(currentTab)
-    }
-  }
-
-  const renderedKeys = new Set(nextLocalTabs.map((tab) => tab.key))
-
-  for (const tab of tabs) {
-    if (renderedKeys.has(tab.key)) continue
-    nextLocalTabs.push({ ...tab })
-  }
-
-  localTabs.value = nextLocalTabs
+function isActiveTab(tab: AdminTabItem) {
+  return tab.key === props.activeKey
 }
 </script>
 
 <template>
   <div class="flex h-full min-w-0 flex-1 overflow-x-clip overflow-y-visible">
     <div
-      v-for="tab in localTabs"
+      v-for="tab in tabs"
       :key="tab.key"
       :class="
         cn(
-          'tab-item group/tab relative flex h-full min-w-0 shrink items-center justify-center duration-200 ease-out select-none after:absolute after:inset-x-0 after:-bottom-px after:h-px after:origin-center after:scale-x-0 after:content-[\'\']',
-          widthTransition ? 'transition-[flex-basis]' : 'transition-none',
-          isActiveTab(tab) ? cn('is-active z-10 bg-default after:scale-x-100', tab.showActiveTabBorder ? 'after:bg-border' : 'after:bg-default') : 'hover:bg-elevated hover:dark:bg-default',
-          tabTransition.closingTabIds.value.has(tab.key) && 'pointer-events-none',
+          'tab-item group/tab relative flex h-full min-w-0 shrink items-center justify-center select-none',
+          isActiveTab(tab) ? cn('is-active z-10 bg-default', tab.showActiveTabBorder ? 'after:bg-border' : 'after:bg-default') : 'hover:bg-elevated hover:dark:bg-default',
         )
       "
-      :style="getTabStyle(tab.key)"
       @click="selectTab(tab.key)"
-      @transitionend.self="tabTransition.handleTabTransitionEnd($event, tab.key)"
     >
       <div class="flex h-full min-w-0 flex-1 items-center justify-center overflow-hidden">
         <div class="flex w-full min-w-0 items-center overflow-hidden pr-3 pl-3.5">
@@ -176,9 +64,7 @@ function syncLocalTabs(tabs: AdminTabItem[]) {
               <img class="mr-2 size-4.5 object-contain" :src="getTabImageIcon(tab.icon)" />
             </picture>
 
-            <span
-              class="min-w-0 flex-1 overflow-hidden text-sm leading-none font-medium whitespace-nowrap text-muted [mask-image:linear-gradient(to_right,black_calc(100%_-_0.75rem),transparent)] [mask-repeat:no-repeat] group-[.is-active]/tab:text-default"
-            >
+            <span class="tab-title min-w-0 flex-1 overflow-hidden text-sm leading-none font-medium whitespace-nowrap text-muted group-[.is-active]/tab:text-default">
               {{ tab.title }}
             </span>
           </div>
@@ -199,19 +85,39 @@ function syncLocalTabs(tabs: AdminTabItem[]) {
         </div>
       </div>
 
-      <span
-        aria-hidden="true"
-        class="pointer-events-none absolute top-0 right-0 -bottom-px z-10 w-px bg-border transition-opacity duration-200 ease-out"
-        :class="tabTransition.closingTabIds.value.has(tab.key) ? 'opacity-0' : 'opacity-100'"
-      />
+      <span aria-hidden="true" class="pointer-events-none absolute top-0 right-0 -bottom-px z-10 w-px bg-border" />
     </div>
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .tab-item {
   container-name: admin-tab;
   container-type: inline-size;
+  /* 为嵌套的可压缩内容提供基础宽度，避免 Tab 在父级 flex 布局中收缩为 0 */
+  flex-basis: 15rem;
+
+  /* 用伪元素绘制激活指示线，默认收缩为 0，不占用 Tab 的布局空间 */
+  &::after {
+    pointer-events: none;
+    position: absolute;
+    inset-inline: 0;
+    bottom: -1px;
+    height: 1px;
+    transform: scaleX(0);
+    transform-origin: center;
+    content: '';
+  }
+
+  /* 标题过长时在右侧渐隐，避免文字直接截断影响关闭按钮的视觉间距 */
+  .tab-title {
+    mask-image: linear-gradient(to right, black calc(100% - 0.75rem), transparent);
+    mask-repeat: no-repeat;
+  }
+
+  &.is-active::after {
+    transform: scaleX(1);
+  }
 }
 
 @container admin-tab (max-width: 5.75rem) {

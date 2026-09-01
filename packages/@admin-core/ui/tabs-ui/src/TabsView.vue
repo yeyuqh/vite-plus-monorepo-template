@@ -2,16 +2,10 @@
 import type { AdminTabItem } from '@monorepo-admin-core/types'
 import Tabs from './components/Tabs.vue'
 
-withDefaults(
-  defineProps<{
-    activeKey: string
-    tabs: AdminTabItem[]
-    widthTransition?: boolean
-  }>(),
-  {
-    widthTransition: true,
-  },
-)
+defineProps<{
+  activeKey: string
+  tabs: AdminTabItem[]
+}>()
 
 const emit = defineEmits<{
   close: [key: string]
@@ -22,7 +16,7 @@ const emit = defineEmits<{
 
 <template>
   <div class="flex h-full min-w-0 justify-between">
-    <Tabs :active-key="activeKey" :tabs="tabs" :width-transition="widthTransition" @close="emit('close', $event)" @select="emit('select', $event)" />
+    <Tabs :active-key="activeKey" :tabs="tabs" @close="emit('close', $event)" @select="emit('select', $event)" />
 
     <div class="flex h-full">
       <button
@@ -33,13 +27,6 @@ const emit = defineEmits<{
       >
         <UIcon name="i-lucide-refresh-cw" />
       </button>
-
-      <!-- <button
-        class="flex h-full w-10 shrink-0 items-center justify-center border-l border-default select-none hover:bg-elevated hover:dark:bg-default"
-        type="button"
-      >
-        <UIcon name="i-lucide-chevron-down" size="20" />
-      </button> -->
     </div>
   </div>
 </template>

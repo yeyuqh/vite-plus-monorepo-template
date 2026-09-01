@@ -15,11 +15,6 @@ const props = defineProps<{
   menuGroups?: AdminMenuGroup[]
   routeRecords?: AdminNavigationRouteRecord[]
   tabStorageKey?: string
-  /**
-   * 是否启用 Tab 打开和关闭时的宽度过渡动画
-   * @default true
-   */
-  tabWidthTransition?: boolean
 }>()
 
 const router = useRouter()
@@ -79,7 +74,7 @@ const menuGroups = computed(() => markActiveAdminMenuGroups(props.menuGroups ?? 
     </template>
 
     <template #tabbar>
-      <LayoutTabbar :storage-key="tabStorageKey" :width-transition="tabWidthTransition ?? true" />
+      <LayoutTabbar :storage-key="tabStorageKey" />
     </template>
   </Layout>
 </template>
