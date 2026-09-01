@@ -73,9 +73,10 @@
     "tsx": "catalog:",
     "type-fest": "catalog:",
     "typescript": "catalog:",
+    "vite": "catalog:",
     "vite-plus": "catalog:"
   },
   "engines": {
-    "node": ">=24"
+    "node": "^22.18.0 || >=24.11.0"
   }
 }

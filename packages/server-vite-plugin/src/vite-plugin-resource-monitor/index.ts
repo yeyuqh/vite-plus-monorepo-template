@@ -192,7 +192,7 @@ export default function resourceMonitorPlugin(options?: ResourceMonitorOptions):
   /** Format snapshot as string / 格式化快照为字符串 */
   function formatSnapshot(snapshot: ResourceSnapshot): string {
     const parts = Object.entries(snapshot)
-      .filter(([_, count]) => count > 0)
+      .filter(([, count]) => count > 0)
       .map(([type, count]) => `${type}: ${count}`)
 
     return parts.length > 0 ? parts.join(', ') : '无活跃连接'
