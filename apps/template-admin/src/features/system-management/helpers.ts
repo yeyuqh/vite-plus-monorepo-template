@@ -171,9 +171,3 @@ export function buildServerListQuery(options: { page: number; pageSize: number; 
     sorters: JSON.stringify([{ field: options.sortField ?? 'createdAt', order: options.sortOrder ?? 'desc' }]),
   }
 }
-
-export function getApiErrorMessage(error: unknown, fallback = '操作失败') {
-  if (error instanceof Error && error.message) return error.message
-  if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string' && error.message) return error.message
-  return fallback
-}

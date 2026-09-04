@@ -8,9 +8,7 @@ export interface ConfirmOptions {
   confirmLabel?: string
   cancelLabel?: string
   confirmDisabled?: boolean
-  errorTitle?: string
   onConfirm: () => Promise<void> | void
-  formatError?: (error: unknown) => string
 }
 
 export function useConfirm() {

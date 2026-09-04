@@ -2,13 +2,14 @@
 import type { AdminMenuItem } from '@monorepo-admin-core/types'
 import type { FormSubmitEvent, TableColumn } from '@nuxt/ui'
 import { useToast } from '@nuxt/ui/runtime/composables/useToast.js'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { z } from 'zod'
 
-import type { SystemRoleApi, SystemUserApi } from '@/api/core/system'
+import type { SystemUserApi } from '@/api/core/system'
 import { systemRoleApi, systemUserApi } from '@/api/core/system'
 import { useConfirm } from '@/composables/useConfirm'
-import { ALL_STATUS_VALUE, buildServerListQuery, buildSystemUserUpdateBody, getApiErrorMessage } from '@/features/system-management/helpers'
+import { ALL_STATUS_VALUE, buildServerListQuery, buildSystemUserUpdateBody } from '@/features/system-management/helpers'
 import { useAdminAccessStore } from '@/stores/access'
 import { useAdminUserStore } from '@/stores/user'
 
@@ -18,14 +19,11 @@ const accessStore = useAdminAccessStore()
 const confirm = useConfirm()
 const userStore = useAdminUserStore()
 const toast = useToast()
-const loading = ref(false)
-const saving = ref(false)
-const users = ref<SystemUserApi.Item[]>([])
-const roles = ref<SystemRoleApi.Item[]>([])
-const total = ref(0)
+const queryClient = useQueryClient()
 const page = ref(1)
 const pageSize = 10
 const search = ref('')
+const appliedSearch = ref('')
 const status = ref(ALL_STATUS_VALUE)
 
 const slideoverOpen = ref(false)
@@ -79,36 +77,37 @@ const homePathOptions = computed(() => {
   return options
 })
 
-async function loadUsers() {
-  const requestSessionVersion = accessStore.sessionVersion
-  loading.value = true
-  try {
-    const result = await systemUserApi.list(buildServerListQuery({ page: page.value, pageSize, search: search.value, searchFields: ['username', 'nickName'], status: status.value }))
-    users.value = result.items
-    total.value = result.total
-  } catch (error) {
-    if (accessStore.isLoggedIn && accessStore.sessionVersion === requestSessionVersion) {
-      toast.add({ title: '加载用户失败', description: getApiErrorMessage(error), color: 'error' })
-    }
-  } finally {
-    loading.value = false
-  }
-}
+const listQuery = computed(() => buildServerListQuery({ page: page.value, pageSize, search: appliedSearch.value, searchFields: ['username', 'nickName'], status: status.value }))
+const {
+  data: listData,
+  isFetching: loading,
+  refetch: loadUsers,
+} = useQuery({
+  queryKey: computed(() => ['admin', accessStore.sessionVersion, 'users', listQuery.value] as const),
+  enabled: computed(() => accessStore.isLoggedIn),
+  retry: false,
+  refetchOnWindowFocus: false,
+  queryFn: ({ queryKey }) => systemUserApi.list(queryKey[3]),
+  placeholderData: (previousData, previousQuery) => (previousQuery?.queryKey[1] === accessStore.sessionVersion ? previousData : undefined),
+})
+const users = computed(() => listData.value?.items ?? [])
+const total = computed(() => listData.value?.total ?? 0)
 
-async function loadRoles() {
-  const requestSessionVersion = accessStore.sessionVersion
-  try {
-    roles.value = (await systemRoleApi.list({ mode: 'off', sorters: JSON.stringify([{ field: 'name', order: 'asc' }]) })).items
-  } catch (error) {
-    if (accessStore.isLoggedIn && accessStore.sessionVersion === requestSessionVersion) {
-      toast.add({ title: '加载角色选项失败', description: getApiErrorMessage(error), color: 'error' })
-    }
-  }
-}
+const { data: roleOptionsData } = useQuery({
+  queryKey: computed(() => ['admin', accessStore.sessionVersion, 'role-options'] as const),
+  enabled: computed(() => accessStore.isLoggedIn),
+  retry: false,
+  refetchOnWindowFocus: false,
+  queryFn: () => systemRoleApi.list({ mode: 'off', sorters: JSON.stringify([{ field: 'name', order: 'asc' }]) }),
+})
+const roles = computed(() => roleOptionsData.value?.items ?? [])
 
 function searchUsers() {
-  page.value = 1
-  void loadUsers()
+  if (page.value === 1 && appliedSearch.value === search.value) void loadUsers()
+  else {
+    appliedSearch.value = search.value
+    page.value = 1
+  }
 }
 
 function openEditor(user?: SystemUserApi.Item) {
@@ -125,9 +124,8 @@ function openEditor(user?: SystemUserApi.Item) {
   slideoverOpen.value = true
 }
 
-async function saveUser(event: FormSubmitEvent<z.output<typeof createSchema> | z.output<typeof updateSchema>>) {
-  saving.value = true
-  try {
+const { isPending: saving, mutate: saveUser } = useMutation({
+  mutationFn: async (event: FormSubmitEvent<z.output<typeof createSchema> | z.output<typeof updateSchema>>) => {
     const common = {
       username: event.data.username,
       nickName: event.data.nickName,
@@ -140,32 +138,31 @@ async function saveUser(event: FormSubmitEvent<z.output<typeof createSchema> | z
     else await systemUserApi.create({ ...common, password: form.password })
     slideoverOpen.value = false
     toast.add({ title: editingUser.value ? '用户已更新' : '用户已创建', color: 'success' })
-    await loadUsers()
-  } catch (error) {
-    toast.add({ title: '保存用户失败', description: getApiErrorMessage(error), color: 'error' })
-  } finally {
-    saving.value = false
-  }
-}
+    await queryClient.invalidateQueries({ queryKey: ['admin', accessStore.sessionVersion, 'users'] })
+  },
+})
 
 async function requestDelete(user: SystemUserApi.Item) {
   await confirm({
     title: '删除用户',
     description: `将永久删除用户“${user.nickName}（${user.username}）”及其角色关联。此操作不可撤销。`,
     confirmLabel: '确认删除',
-    errorTitle: '删除用户失败',
-    formatError: getApiErrorMessage,
     onConfirm: async () => {
       await systemUserApi.delete(user.id)
       toast.add({ title: '用户已删除', color: 'success' })
-      await loadUsers()
+      await queryClient.invalidateQueries({ queryKey: ['admin', accessStore.sessionVersion, 'users'] })
     },
   })
 }
 
-watch(status, searchUsers)
-watch(page, loadUsers)
-onMounted(() => Promise.all([loadUsers(), loadRoles()]))
+watch(
+  status,
+  () => {
+    appliedSearch.value = search.value
+    page.value = 1
+  },
+  { flush: 'sync' },
+)
 </script>
 
 <template>
@@ -190,7 +187,7 @@ onMounted(() => Promise.all([loadUsers(), loadRoles()]))
         class="w-36"
       />
       <UButton label="查询" color="neutral" variant="outline" @click="searchUsers" />
-      <UButton icon="i-lucide-refresh-cw" aria-label="刷新" color="neutral" variant="ghost" :loading="loading" @click="loadUsers" />
+      <UButton icon="i-lucide-refresh-cw" aria-label="刷新" color="neutral" variant="ghost" :loading="loading" @click="loadUsers()" />
     </div>
 
     <UTable :data="users" :columns="columns" :loading="loading" sticky="header" class="min-h-0 flex-1">

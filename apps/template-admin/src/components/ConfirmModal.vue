@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { useMutation } from '@tanstack/vue-query'
 
 const props = withDefaults(
   defineProps<{
@@ -9,9 +9,7 @@ const props = withDefaults(
     confirmLabel?: string
     cancelLabel?: string
     confirmDisabled?: boolean
-    errorTitle?: string
     onConfirm: () => Promise<void> | void
-    formatError?: (error: unknown) => string
   }>(),
   {
     open: false,
@@ -19,8 +17,6 @@ const props = withDefaults(
     confirmLabel: '确认',
     cancelLabel: '取消',
     confirmDisabled: false,
-    errorTitle: '操作失败',
-    formatError: (error: unknown) => (error instanceof Error ? error.message : '操作失败，请稍后重试'),
   },
 )
 
@@ -29,16 +25,14 @@ const emit = defineEmits<{
   'update:open': [open: boolean]
 }>()
 
-const pending = ref(false)
-const errorMessage = ref('')
-
-watch(
-  () => props.open,
-  (open) => {
-    if (open) errorMessage.value = ''
+const { isPending: pending, mutate: confirm } = useMutation({
+  mutationFn: async () => {
+    await props.onConfirm()
   },
-)
-
+  onSuccess: () => {
+    emit('close', true)
+  },
+})
 function close(confirmed: boolean) {
   if (pending.value) return
   emit('close', confirmed)
@@ -50,29 +44,14 @@ function updateOpen(open: boolean) {
   if (!open) emit('close', false)
 }
 
-async function submit() {
+function submit() {
   if (pending.value || props.confirmDisabled) return
-
-  pending.value = true
-  errorMessage.value = ''
-
-  try {
-    await props.onConfirm()
-    emit('close', true)
-  } catch (error) {
-    errorMessage.value = props.formatError(error)
-  } finally {
-    pending.value = false
-  }
+  confirm()
 }
 </script>
 
 <template>
   <UModal :open="open" :title="title" :description="description" :close="!pending" :dismissible="!pending" :ui="{ footer: 'justify-end' }" @update:open="updateOpen">
-    <template v-if="errorMessage" #body>
-      <UAlert :title="errorTitle" :description="errorMessage" color="error" variant="soft" />
-    </template>
-
     <template #footer>
       <UButton :label="cancelLabel" color="neutral" variant="outline" :disabled="pending" @click="close(false)" />
       <UButton :label="confirmLabel" color="error" :disabled="confirmDisabled" :loading="pending" @click="submit" />

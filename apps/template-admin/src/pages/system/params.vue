@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { FormSubmitEvent, TableColumn } from '@nuxt/ui'
 import { useToast } from '@nuxt/ui/runtime/composables/useToast.js'
-import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { z } from 'zod'
 
 import type { SystemParamApi } from '@/api/core/system'
 import { systemParamApi } from '@/api/core/system'
 import { useConfirm } from '@/composables/useConfirm'
-import { buildServerListQuery, getApiErrorMessage } from '@/features/system-management/helpers'
+import { buildServerListQuery } from '@/features/system-management/helpers'
 import {
   formatParamValue,
   getDefaultParamValue,
@@ -29,13 +30,11 @@ definePage({ meta: { title: '参数管理', icon: 'i-lucide-braces', order: 40, 
 const accessStore = useAdminAccessStore()
 const confirm = useConfirm()
 const toast = useToast()
-const loading = ref(true)
-const saving = ref(false)
-const params = ref<SystemParamApi.Item[]>([])
-const total = ref(0)
+const queryClient = useQueryClient()
 const page = ref(1)
 const pageSize = 10
 const search = ref('')
+const appliedSearch = ref('')
 const status = ref<ParamStatus | null>(null)
 
 const slideoverOpen = ref(false)
@@ -111,34 +110,30 @@ const numberValue = computed<number | undefined>({
   },
 })
 
-async function loadParams() {
-  const requestSessionVersion = accessStore.sessionVersion
-  loading.value = true
-  try {
-    const result = await systemParamApi.list(
-      buildServerListQuery({
-        page: page.value,
-        pageSize,
-        search: search.value,
-        searchFields: ['key', 'name'],
-        status: status.value ?? undefined,
-        sortField: 'updatedAt',
-      }),
-    )
-    params.value = result.items
-    total.value = result.total
-  } catch (error) {
-    if (accessStore.isLoggedIn && accessStore.sessionVersion === requestSessionVersion) {
-      toast.add({ title: '加载参数失败', description: getApiErrorMessage(error), color: 'error' })
-    }
-  } finally {
-    loading.value = false
-  }
-}
+const listQuery = computed(() =>
+  buildServerListQuery({ page: page.value, pageSize, search: appliedSearch.value, searchFields: ['key', 'name'], status: status.value ?? undefined, sortField: 'updatedAt' }),
+)
+const {
+  data: listData,
+  isFetching: loading,
+  refetch: loadParams,
+} = useQuery({
+  queryKey: computed(() => ['admin', accessStore.sessionVersion, 'params', listQuery.value] as const),
+  enabled: computed(() => accessStore.isLoggedIn),
+  retry: false,
+  refetchOnWindowFocus: false,
+  queryFn: ({ queryKey }) => systemParamApi.list(queryKey[3]),
+  placeholderData: (previousData, previousQuery) => (previousQuery?.queryKey[1] === accessStore.sessionVersion ? previousData : undefined),
+})
+const params = computed(() => listData.value?.items ?? [])
+const total = computed(() => listData.value?.total ?? 0)
 
 function searchParams() {
-  if (page.value === 1) void loadParams()
-  else page.value = 1
+  if (page.value === 1 && appliedSearch.value === search.value) void loadParams()
+  else {
+    appliedSearch.value = search.value
+    page.value = 1
+  }
 }
 
 function resetFilters() {
@@ -162,9 +157,8 @@ function openEditor(param?: SystemParamApi.Item) {
   slideoverOpen.value = true
 }
 
-async function saveParam(event: FormSubmitEvent<ParamSchema>) {
-  saving.value = true
-  try {
+const { isPending: saving, mutate: saveParam } = useMutation({
+  mutationFn: async (event: FormSubmitEvent<ParamSchema>) => {
     const payload = {
       key: event.data.key.trim(),
       name: event.data.name.trim(),
@@ -179,13 +173,9 @@ async function saveParam(event: FormSubmitEvent<ParamSchema>) {
 
     slideoverOpen.value = false
     toast.add({ title: editingParam.value ? '参数已更新' : '参数已创建', color: 'success' })
-    await loadParams()
-  } catch (error) {
-    toast.add({ title: '保存参数失败', description: getApiErrorMessage(error), color: 'error' })
-  } finally {
-    saving.value = false
-  }
-}
+    await queryClient.invalidateQueries({ queryKey: ['admin', accessStore.sessionVersion, 'params'] })
+  },
+})
 
 function prettyPrintJson() {
   const message = getParamValueError('JSON', form.value)
@@ -210,12 +200,10 @@ async function requestDelete(param: SystemParamApi.Item) {
     title: '删除参数',
     description: `将永久删除参数“${param.name}（${param.key}）”。此操作不可撤销。`,
     confirmLabel: '确认删除',
-    errorTitle: '删除参数失败',
-    formatError: getApiErrorMessage,
     onConfirm: async () => {
       await systemParamApi.delete(param.id)
       toast.add({ title: '参数已删除', color: 'success' })
-      await loadParams()
+      await queryClient.invalidateQueries({ queryKey: ['admin', accessStore.sessionVersion, 'params'] })
     },
   })
 }
@@ -228,9 +216,14 @@ watch(
   },
   { flush: 'sync' },
 )
-watch(status, searchParams)
-watch(page, loadParams)
-onMounted(loadParams)
+watch(
+  status,
+  () => {
+    appliedSearch.value = search.value
+    page.value = 1
+  },
+  { flush: 'sync' },
+)
 </script>
 
 <template>

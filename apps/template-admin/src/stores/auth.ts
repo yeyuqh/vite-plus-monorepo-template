@@ -2,7 +2,8 @@ import type { CoreAuthApi } from '@/api/core/auth'
 import type { AdminUserInfo } from '@/api/core/auth'
 import { useAdminTabStore } from '@monorepo-admin-core/stores'
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
+import { useMutation } from '@tanstack/vue-query'
 import { useRouter } from 'vue-router'
 import { coreAuthApi } from '@/api/core/auth'
 import { LOGIN_ROUTE_PATH, resolveLoginRedirect } from '@/router/access'
@@ -26,16 +27,13 @@ export const useAdminAuthStore = defineStore('admin-auth', () => {
   const router = useRouter()
   const tabStore = useAdminTabStore()
   const userStore = useAdminUserStore()
-  const loginLoading = ref(false)
   let accessSetupPromise: Promise<boolean> | undefined
 
   const homePath = computed(() => accessStore.resolveHomePath(userStore.homePath))
   const isLoggedIn = computed(() => accessStore.isLoggedIn)
 
-  async function authLogin(params: CoreAuthApi.LoginBody, onSuccess?: () => Promise<void> | void) {
-    loginLoading.value = true
-
-    try {
+  const { isPending: loginLoading, mutateAsync: login } = useMutation({
+    mutationFn: async ({ params, onSuccess }: { params: CoreAuthApi.LoginBody; onSuccess?: () => Promise<void> | void }) => {
       const result = await coreAuthApi.login(params)
       accessSetupPromise = void 0
       accessStore.setAccessToken(result.accessToken)
@@ -49,12 +47,13 @@ export const useAdminAuthStore = defineStore('admin-auth', () => {
 
       await onSuccess?.()
 
-      return {
-        userInfo: userStore.userInfo,
-      }
-    } finally {
-      loginLoading.value = false
-    }
+      return { userInfo: userStore.userInfo }
+    },
+    gcTime: 0,
+  })
+
+  function authLogin(params: CoreAuthApi.LoginBody, onSuccess?: () => Promise<void> | void) {
+    return login({ params, onSuccess })
   }
 
   function canAccessPath(path: string) {

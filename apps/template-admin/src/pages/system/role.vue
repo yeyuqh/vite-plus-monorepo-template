@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { FormSubmitEvent, TableColumn } from '@nuxt/ui'
 import { useToast } from '@nuxt/ui/runtime/composables/useToast.js'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { z } from 'zod'
 
 import type { SystemRoleApi } from '@/api/core/system'
@@ -12,7 +13,6 @@ import {
   buildRolePermissionGroups,
   buildSaveRolePermissions,
   buildServerListQuery,
-  getApiErrorMessage,
   getDirectRoleMenuIds,
   getDirectRolePermissions,
   hasRolePermission,
@@ -29,14 +29,11 @@ definePage({ meta: { title: '角色管理', icon: 'i-lucide-shield-check', order
 const accessStore = useAdminAccessStore()
 const confirm = useConfirm()
 const toast = useToast()
-const loading = ref(false)
-const saving = ref(false)
-const roles = ref<SystemRoleApi.Item[]>([])
-const allRoles = ref<SystemRoleApi.Item[]>([])
-const total = ref(0)
+const queryClient = useQueryClient()
 const page = ref(1)
 const pageSize = 10
 const search = ref('')
+const appliedSearch = ref('')
 const status = ref(ALL_STATUS_VALUE)
 
 const slideoverOpen = ref(false)
@@ -44,14 +41,12 @@ const activeEditorTab = ref('basic')
 const editingRole = ref<SystemRoleApi.Item | null>(null)
 const menuAuthorization = ref<SystemRoleApi.MenuAuthorization | null>(null)
 const permissions = ref<SystemRoleApi.PermissionResult | null>(null)
-const editorLoading = ref(false)
 const selectedMenuIds = ref<string[]>([])
 const directPermissions = ref<RolePermissionInput[]>([])
 const permissionCatalog = ref<RolePermissionInput[]>([])
 const permissionSearch = ref('')
 const collapsedPermissionGroups = ref<Set<string>>(new Set())
 const copyRoleId = ref('')
-const copyingPermissions = ref(false)
 const roleForm = reactive({
   id: '',
   name: '',
@@ -76,6 +71,7 @@ const columns: TableColumn<SystemRoleApi.Item>[] = [
   { id: 'actions', header: '操作' },
 ]
 
+const saving = computed(() => savingBasic.value || savingMenus.value || savingPermissions.value)
 const canEditPermissions = computed(() => permissions.value !== null && !editorLoading.value && editingRole.value?.id !== 'admin' && accessStore.hasPermission('system:role:authorize'))
 const inheritedPermissions = computed(() => permissions.value?.permissions.filter(({ inherited }) => inherited).map(normalizeRolePermission) ?? [])
 const permissionGroups = computed(() => {
@@ -96,38 +92,39 @@ const copyRoleOptions = computed(() => allRoles.value.filter(({ id }) => id !== 
 
 const parentRoleOptions = computed(() => allRoles.value.filter(({ id }) => id !== editingRole.value?.id).map((role) => ({ label: `${role.name} (${role.id})`, value: role.id })))
 
-async function loadRoles() {
-  const requestSessionVersion = accessStore.sessionVersion
-  loading.value = true
-  try {
-    const result = await systemRoleApi.list(
-      buildServerListQuery({ page: page.value, pageSize, search: search.value, searchFields: ['id', 'name'], status: status.value, sortField: 'createdAt', sortOrder: 'asc' }),
-    )
-    roles.value = result.items
-    total.value = result.total
-  } catch (error) {
-    if (accessStore.isLoggedIn && accessStore.sessionVersion === requestSessionVersion) {
-      toast.add({ title: '加载角色失败', description: getApiErrorMessage(error), color: 'error' })
-    }
-  } finally {
-    loading.value = false
-  }
-}
+const listQuery = computed(() =>
+  buildServerListQuery({ page: page.value, pageSize, search: appliedSearch.value, searchFields: ['id', 'name'], status: status.value, sortField: 'createdAt', sortOrder: 'asc' }),
+)
+const {
+  data: listData,
+  isFetching: loading,
+  refetch: loadRoles,
+} = useQuery({
+  queryKey: computed(() => ['admin', accessStore.sessionVersion, 'roles', listQuery.value] as const),
+  enabled: computed(() => accessStore.isLoggedIn),
+  retry: false,
+  refetchOnWindowFocus: false,
+  queryFn: ({ queryKey }) => systemRoleApi.list(queryKey[3]),
+  placeholderData: (previousData, previousQuery) => (previousQuery?.queryKey[1] === accessStore.sessionVersion ? previousData : undefined),
+})
+const roles = computed(() => listData.value?.items ?? [])
+const total = computed(() => listData.value?.total ?? 0)
 
-async function loadAllRoles() {
-  const requestSessionVersion = accessStore.sessionVersion
-  try {
-    allRoles.value = (await systemRoleApi.list({ mode: 'off', sorters: JSON.stringify([{ field: 'name', order: 'asc' }]) })).items
-  } catch (error) {
-    if (accessStore.isLoggedIn && accessStore.sessionVersion === requestSessionVersion) {
-      toast.add({ title: '加载角色选项失败', description: getApiErrorMessage(error), color: 'error' })
-    }
-  }
-}
+const { data: roleOptionsData } = useQuery({
+  queryKey: computed(() => ['admin', accessStore.sessionVersion, 'role-options'] as const),
+  enabled: computed(() => accessStore.isLoggedIn),
+  retry: false,
+  refetchOnWindowFocus: false,
+  queryFn: () => systemRoleApi.list({ mode: 'off', sorters: JSON.stringify([{ field: 'name', order: 'asc' }]) }),
+})
+const allRoles = computed(() => roleOptionsData.value?.items ?? [])
 
 function searchRoles() {
-  page.value = 1
-  void loadRoles()
+  if (page.value === 1 && appliedSearch.value === search.value) void loadRoles()
+  else {
+    appliedSearch.value = search.value
+    page.value = 1
+  }
 }
 
 async function openEditor(role?: SystemRoleApi.Item) {
@@ -152,28 +149,32 @@ async function openEditor(role?: SystemRoleApi.Item) {
   slideoverOpen.value = true
 
   if (role) {
-    editorLoading.value = true
-    try {
-      const [menus, apiPermissions] = await Promise.all([systemRoleApi.getMenus(role.id), systemRoleApi.getPermissions(role.id)])
-      menuAuthorization.value = menus
-      permissions.value = apiPermissions
-      selectedMenuIds.value = [...menus.menuIds]
-      permissionCatalog.value = apiPermissions.catalog.map(normalizeRolePermission)
-      collapsedPermissionGroups.value = new Set(buildRolePermissionGroups(permissionCatalog.value).map(({ id }) => id))
-      directPermissions.value = getDirectRolePermissions(apiPermissions).filter((permission) => hasRolePermission(permissionCatalog.value, permission))
-    } catch (error) {
-      if (accessStore.isLoggedIn && accessStore.sessionVersion === requestSessionVersion) {
-        toast.add({ title: '加载角色授权失败', description: getApiErrorMessage(error), color: 'error' })
-      }
-    } finally {
-      editorLoading.value = false
-    }
+    const result = await loadRoleAuthorization()
+    if (!result.data || result.isError || editingRole.value?.id !== role.id || !slideoverOpen.value || accessStore.sessionVersion !== requestSessionVersion) return
+    const { menus, apiPermissions } = result.data
+    menuAuthorization.value = menus
+    permissions.value = apiPermissions
+    selectedMenuIds.value = [...menus.menuIds]
+    permissionCatalog.value = apiPermissions.catalog.map(normalizeRolePermission)
+    collapsedPermissionGroups.value = new Set(buildRolePermissionGroups(permissionCatalog.value).map(({ id }) => id))
+    directPermissions.value = getDirectRolePermissions(apiPermissions).filter((permission) => hasRolePermission(permissionCatalog.value, permission))
   }
 }
 
-async function saveBasic(event: FormSubmitEvent<z.output<typeof roleSchema>>) {
-  saving.value = true
-  try {
+const { isFetching: editorLoading, refetch: loadRoleAuthorization } = useQuery({
+  queryKey: computed(() => ['admin', accessStore.sessionVersion, 'role-authorization', editingRole.value?.id] as const),
+  enabled: false,
+  retry: false,
+  queryFn: async ({ queryKey }) => {
+    const roleId = queryKey[3]
+    if (!roleId) throw new Error('请选择角色')
+    const [menus, apiPermissions] = await Promise.all([systemRoleApi.getMenus(roleId), systemRoleApi.getPermissions(roleId)])
+    return { menus, apiPermissions }
+  },
+})
+
+const { isPending: savingBasic, mutate: saveBasic } = useMutation({
+  mutationFn: async (event: FormSubmitEvent<z.output<typeof roleSchema>>) => {
     const body = {
       name: event.data.name,
       description: roleForm.description || undefined,
@@ -184,35 +185,30 @@ async function saveBasic(event: FormSubmitEvent<z.output<typeof roleSchema>>) {
     else await systemRoleApi.create({ id: event.data.id, ...body })
     toast.add({ title: editingRole.value ? '角色已更新' : '角色已创建', color: 'success' })
     slideoverOpen.value = false
-    await Promise.all([loadRoles(), loadAllRoles()])
-  } catch (error) {
-    toast.add({ title: '保存角色失败', description: getApiErrorMessage(error), color: 'error' })
-  } finally {
-    saving.value = false
-  }
-}
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['admin', accessStore.sessionVersion, 'roles'] }),
+      queryClient.invalidateQueries({ queryKey: ['admin', accessStore.sessionVersion, 'role-options'] }),
+    ])
+  },
+})
 
 function toggleMenu(id: string, checked: boolean) {
   if (!menuAuthorization.value) return
   selectedMenuIds.value = toggleRoleMenuSelection(menuAuthorization.value.tree, selectedMenuIds.value, id, checked)
 }
 
-async function saveMenuAuthorization() {
-  if (!editingRole.value || !menuAuthorization.value) return
-  saving.value = true
-  try {
+const { isPending: savingMenus, mutate: saveMenuAuthorization } = useMutation({
+  mutationFn: async () => {
+    if (!editingRole.value || !menuAuthorization.value) return
+
     const menuIds = getDirectRoleMenuIds(menuAuthorization.value.tree, selectedMenuIds.value)
     await systemRoleApi.saveMenus(editingRole.value.id, { menuIds })
     const refreshed = await systemRoleApi.getMenus(editingRole.value.id)
     menuAuthorization.value = refreshed
     selectedMenuIds.value = [...refreshed.menuIds]
     toast.add({ title: '菜单授权已保存', description: '授权将在用户下次登录或重新初始化权限后生效。', color: 'success' })
-  } catch (error) {
-    toast.add({ title: '保存菜单授权失败', description: getApiErrorMessage(error), color: 'error' })
-  } finally {
-    saving.value = false
-  }
-}
+  },
+})
 
 function permissionSelection(permission: RolePermissionInput) {
   return hasRolePermission([...directPermissions.value, ...inheritedPermissions.value], permission)
@@ -250,56 +246,61 @@ function clearDirectPermissions() {
   directPermissions.value = []
 }
 
+const { isFetching: copyingPermissions, refetch: loadCopyPermissions } = useQuery({
+  queryKey: computed(() => ['admin', accessStore.sessionVersion, 'role-permissions', copyRoleId.value] as const),
+  enabled: false,
+  retry: false,
+  queryFn: ({ queryKey }) => systemRoleApi.getPermissions(queryKey[3]),
+})
+
 async function copyRolePermissions() {
   if (!copyRoleId.value || !canEditPermissions.value) return
-  copyingPermissions.value = true
-  try {
-    const source = await systemRoleApi.getPermissions(copyRoleId.value)
-    const sourcePermissions = source.permissions.map(normalizeRolePermission).filter((permission) => hasRolePermission(permissionCatalog.value, permission))
-    const before = directPermissions.value.length
-    directPermissions.value = mergeRolePermissions(directPermissions.value, sourcePermissions, inheritedPermissions.value)
-    toast.add({ title: '角色权限已复制', description: `新增 ${directPermissions.value.length - before} 条直接权限，保存后生效。`, color: 'success' })
-  } catch (error) {
-    toast.add({ title: '复制角色权限失败', description: getApiErrorMessage(error), color: 'error' })
-  } finally {
-    copyingPermissions.value = false
-  }
+  const roleId = editingRole.value?.id
+  const requestSessionVersion = accessStore.sessionVersion
+  const { data: source, isError } = await loadCopyPermissions()
+  if (isError || !source || editingRole.value?.id !== roleId || !slideoverOpen.value || accessStore.sessionVersion !== requestSessionVersion) return
+  const sourcePermissions = source.permissions.map(normalizeRolePermission).filter((permission) => hasRolePermission(permissionCatalog.value, permission))
+  const before = directPermissions.value.length
+  directPermissions.value = mergeRolePermissions(directPermissions.value, sourcePermissions, inheritedPermissions.value)
+  toast.add({ title: '角色权限已复制', description: `新增 ${directPermissions.value.length - before} 条直接权限，保存后生效。`, color: 'success' })
 }
 
-async function saveApiPermissions() {
-  if (!editingRole.value || !permissions.value || editorLoading.value) return
-  saving.value = true
-  try {
+const { isPending: savingPermissions, mutate: saveApiPermissions } = useMutation({
+  mutationFn: async () => {
+    if (!editingRole.value || !permissions.value || editorLoading.value) return
+
     const result = await systemRoleApi.savePermissions(editingRole.value.id, { permissions: buildSaveRolePermissions(directPermissions.value) })
     const refreshed = await systemRoleApi.getPermissions(editingRole.value.id)
     permissions.value = refreshed
     directPermissions.value = getDirectRolePermissions(refreshed)
     toast.add({ title: 'API 权限已保存', description: `当前角色共有 ${result.total} 条直接权限。`, color: 'success' })
-  } catch (error) {
-    toast.add({ title: '保存 API 权限失败', description: getApiErrorMessage(error), color: 'error' })
-  } finally {
-    saving.value = false
-  }
-}
+  },
+})
 
 async function requestDelete(role: SystemRoleApi.Item) {
   await confirm({
     title: '删除角色',
     description: `将永久删除角色“${role.name}”。若仍有用户使用它，或其他角色继承它，服务端会拒绝删除。`,
     confirmLabel: '确认删除',
-    errorTitle: '删除角色失败',
-    formatError: getApiErrorMessage,
     onConfirm: async () => {
       await systemRoleApi.delete(role.id)
       toast.add({ title: '角色已删除', color: 'success' })
-      await Promise.all([loadRoles(), loadAllRoles()])
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin', accessStore.sessionVersion, 'roles'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', accessStore.sessionVersion, 'role-options'] }),
+      ])
     },
   })
 }
 
-watch(status, searchRoles)
-watch(page, loadRoles)
-onMounted(() => Promise.all([loadRoles(), loadAllRoles()]))
+watch(
+  status,
+  () => {
+    appliedSearch.value = search.value
+    page.value = 1
+  },
+  { flush: 'sync' },
+)
 </script>
 
 <template>
@@ -324,7 +325,7 @@ onMounted(() => Promise.all([loadRoles(), loadAllRoles()]))
         class="w-36"
       />
       <UButton label="查询" color="neutral" variant="outline" @click="searchRoles" />
-      <UButton icon="i-lucide-refresh-cw" aria-label="刷新" color="neutral" variant="ghost" :loading="loading" @click="loadRoles" />
+      <UButton icon="i-lucide-refresh-cw" aria-label="刷新" color="neutral" variant="ghost" :loading="loading" @click="loadRoles()" />
     </div>
 
     <UTable :data="roles" :columns="columns" :loading="loading" sticky="header" class="min-h-0 flex-1">
@@ -517,9 +518,9 @@ onMounted(() => Promise.all([loadRoles(), loadAllRoles()]))
         v-if="activeEditorTab === 'menus' && editingRole && !menuAuthorization?.readOnly && accessStore.hasPermission('system:role:authorize')"
         label="保存菜单授权"
         :loading="saving"
-        @click="saveMenuAuthorization"
+        @click="saveMenuAuthorization()"
       />
-      <UButton v-if="activeEditorTab === 'api' && editingRole && canEditPermissions" label="保存 API 权限" :loading="saving" @click="saveApiPermissions" />
+      <UButton v-if="activeEditorTab === 'api' && editingRole && canEditPermissions" label="保存 API 权限" :loading="saving" @click="saveApiPermissions()" />
     </template>
   </USlideover>
 </template>

@@ -1,6 +1,8 @@
 import type { CoreAuthApi } from '@/api/core/auth'
-import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, expect, test, vi } from 'vite-plus/test'
+import { createPinia, disposePinia, setActivePinia } from 'pinia'
+import { createApp } from 'vue'
+import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
+import { afterEach, beforeEach, expect, test, vi } from 'vite-plus/test'
 import { useAdminAuthStore } from './auth'
 import { useAdminUserStore } from './user'
 
@@ -73,9 +75,20 @@ const identity: CoreAuthApi.IdentityResult = {
   username: 'empty',
 }
 
+let pinia: ReturnType<typeof createPinia>
+let queryClient: QueryClient
+
+afterEach(() => {
+  disposePinia(pinia)
+  queryClient.clear()
+})
+
 beforeEach(() => {
   vi.clearAllMocks()
-  setActivePinia(createPinia())
+  pinia = createPinia()
+  queryClient = new QueryClient()
+  createApp({}).use(pinia).use(VueQueryPlugin, { queryClient })
+  setActivePinia(pinia)
 
   mocks.accessStore.accessToken = null
   mocks.accessStore.isAccessInitialized = false
@@ -330,4 +343,35 @@ test('clears the session and preserves the current path when the access token ex
   })
   expect(mocks.accessStore.invalidateSession.mock.invocationCallOrder[0]).toBeLessThan(mocks.routerReplace.mock.invocationCallOrder[0]!)
   expect(mocks.routerReplace.mock.invocationCallOrder[0]).toBeLessThan(mocks.accessStore.resetAccessState.mock.invocationCallOrder[0]!)
+})
+
+test('keeps login pending until the success callback completes', async () => {
+  const store = useAdminAuthStore()
+  let finishCallback: (() => void) | undefined
+  const onSuccess = vi.fn<() => Promise<void>>(
+    () =>
+      new Promise<void>((resolve) => {
+        finishCallback = resolve
+      }),
+  )
+
+  const login = store.authLogin({ captchaToken: 'captcha-token', password: 'password', username: 'empty' }, onSuccess)
+  await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
+  expect(store.loginLoading).toBe(true)
+
+  finishCallback?.()
+  await login
+  expect(store.loginLoading).toBe(false)
+})
+
+test('propagates login errors and clears pending without initializing a session', async () => {
+  const error = new Error('invalid credentials')
+  mocks.login.mockRejectedValue(error)
+  const store = useAdminAuthStore()
+
+  await expect(store.authLogin({ captchaToken: 'captcha-token', password: 'wrong', username: 'empty' })).rejects.toBe(error)
+
+  expect(store.loginLoading).toBe(false)
+  expect(mocks.accessStore.setAccessToken).not.toHaveBeenCalled()
+  expect(mocks.getIdentity).not.toHaveBeenCalled()
 })

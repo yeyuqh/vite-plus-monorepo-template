@@ -48,7 +48,11 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     }),
   )
 
-  client.addResponseInterceptor(errorMessageResponseInterceptor())
+  client.addResponseInterceptor(
+    errorMessageResponseInterceptor((message, error) => {
+      console.error('请求错误', message, error)
+    }),
+  )
 
   return client
 }

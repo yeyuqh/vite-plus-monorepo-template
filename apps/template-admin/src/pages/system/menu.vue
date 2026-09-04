@@ -2,14 +2,15 @@
 import type { FormSubmitEvent, TableColumn } from '@nuxt/ui'
 import { resolveAdminRoutePath } from '@monorepo-admin-core/access-effect'
 import { useToast } from '@nuxt/ui/runtime/composables/useToast.js'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useMutation, useQuery } from '@tanstack/vue-query'
 import { z } from 'zod'
 
 import type { SystemMenuApi } from '@/api/core/system'
 import { Page } from '@monorepo-admin-core/common-ui'
 import { systemMenuApi } from '@/api/core/system'
 import { useConfirm } from '@/composables/useConfirm'
-import { countMenuSubtree, flattenMenuTree, getApiErrorMessage } from '@/features/system-management/helpers'
+import { countMenuSubtree, flattenMenuTree } from '@/features/system-management/helpers'
 import {
   getMenuAccessScopeMetadata,
   getMenuStatusMetadata,
@@ -32,9 +33,6 @@ definePage({
 const accessStore = useAdminAccessStore()
 const confirm = useConfirm()
 const toast = useToast()
-const loading = ref(false)
-const saving = ref(false)
-const tree = ref<SystemMenuApi.Node[]>([])
 const expandedIds = ref(new Set<string>())
 const columnPinning = ref({ right: ['actions'] })
 
@@ -239,21 +237,25 @@ function getMenuImageIcon(icon: { dark?: string; light: string }, theme: 'light'
   return theme === 'dark' ? (icon.dark ?? icon.light) : icon.light
 }
 
-async function loadData() {
-  const requestSessionVersion = accessStore.sessionVersion
-  loading.value = true
-  try {
-    const nextTree = await systemMenuApi.getTree()
-    tree.value = nextTree
+const {
+  data: treeData,
+  isFetching: loading,
+  refetch: loadData,
+} = useQuery({
+  queryKey: computed(() => ['admin', accessStore.sessionVersion, 'menus'] as const),
+  enabled: computed(() => accessStore.isLoggedIn),
+  retry: false,
+  refetchOnWindowFocus: false,
+  queryFn: () => systemMenuApi.getTree(),
+})
+const tree = computed(() => treeData.value ?? [])
+watch(
+  tree,
+  (nextTree) => {
     if (expandedIds.value.size === 0) expandedIds.value = new Set(nextTree.map(({ id }) => id))
-  } catch (error) {
-    if (accessStore.isLoggedIn && accessStore.sessionVersion === requestSessionVersion) {
-      toast.add({ title: '加载菜单失败', description: getApiErrorMessage(error), color: 'error' })
-    }
-  } finally {
-    loading.value = false
-  }
-}
+  },
+  { immediate: true },
+)
 
 function toggleExpanded(id: string) {
   const next = new Set(expandedIds.value)
@@ -295,50 +297,46 @@ function openMenuForm(menu?: SystemMenuApi.Node, parentId?: string, initialType:
   menuSlideoverOpen.value = true
 }
 
-async function saveMenu(event: FormSubmitEvent<z.output<typeof menuSchema>>) {
-  saving.value = true
-  const isGroup = menuForm.type === 'group'
-  const hasRoute = menuHasRoute.value
-  const icon = menuSupportsIcon.value
-    ? menuForm.iconKind === 'image'
-      ? { light: menuForm.iconLight.trim(), ...(menuForm.iconDark.trim() ? { dark: menuForm.iconDark.trim() } : {}) }
-      : menuForm.icon.trim() || null
-    : null
-  const body = {
-    title: event.data.title,
-    type: event.data.type,
-    path: isGroup ? null : event.data.path.trim(),
-    parentId: isGroup ? null : menuForm.parentId,
-    accessScope: isGroup ? ('public' as const) : menuForm.accessScope,
-    status: menuForm.status,
-    order: menuForm.order,
-    permissionCode: menuForm.type === 'button' ? menuForm.permissionCode.trim() : null,
-    description: menuForm.description || null,
-    icon,
-    activePath: hasRoute ? menuForm.activePath.trim() || null : null,
-    externalLink: hasRoute ? menuForm.externalLink.trim() || null : null,
-    iframeSrc: hasRoute ? menuForm.iframeSrc.trim() || null : null,
-    hideInBreadcrumb: hasRoute && menuForm.hideInBreadcrumb,
-    hideInMenu: hasRoute && menuForm.hideInMenu,
-    hideInTab: hasRoute && menuForm.hideInTab,
-    ignoreAccess: hasRoute && (editingMenu.value?.ignoreAccess ?? false),
-    keepAlive: hasRoute && !menuForm.hideInTab && menuForm.keepAlive,
-    menuVisibleWithForbidden: hasRoute && menuForm.accessScope === 'restricted' && menuForm.menuVisibleWithForbidden,
-    showActiveTabBorder: hasRoute && (editingMenu.value?.showActiveTabBorder ?? false),
-    tabPath: hasRoute && !menuForm.hideInTab ? menuForm.tabPath.trim() || null : null,
-  }
-  try {
+const { isPending: saving, mutate: saveMenu } = useMutation({
+  mutationFn: async (event: FormSubmitEvent<z.output<typeof menuSchema>>) => {
+    const isGroup = menuForm.type === 'group'
+    const hasRoute = menuHasRoute.value
+    const icon = menuSupportsIcon.value
+      ? menuForm.iconKind === 'image'
+        ? { light: menuForm.iconLight.trim(), ...(menuForm.iconDark.trim() ? { dark: menuForm.iconDark.trim() } : {}) }
+        : menuForm.icon.trim() || null
+      : null
+    const body = {
+      title: event.data.title,
+      type: event.data.type,
+      path: isGroup ? null : event.data.path.trim(),
+      parentId: isGroup ? null : menuForm.parentId,
+      accessScope: isGroup ? ('public' as const) : menuForm.accessScope,
+      status: menuForm.status,
+      order: menuForm.order,
+      permissionCode: menuForm.type === 'button' ? menuForm.permissionCode.trim() : null,
+      description: menuForm.description || null,
+      icon,
+      activePath: hasRoute ? menuForm.activePath.trim() || null : null,
+      externalLink: hasRoute ? menuForm.externalLink.trim() || null : null,
+      iframeSrc: hasRoute ? menuForm.iframeSrc.trim() || null : null,
+      hideInBreadcrumb: hasRoute && menuForm.hideInBreadcrumb,
+      hideInMenu: hasRoute && menuForm.hideInMenu,
+      hideInTab: hasRoute && menuForm.hideInTab,
+      ignoreAccess: hasRoute && (editingMenu.value?.ignoreAccess ?? false),
+      keepAlive: hasRoute && !menuForm.hideInTab && menuForm.keepAlive,
+      menuVisibleWithForbidden: hasRoute && menuForm.accessScope === 'restricted' && menuForm.menuVisibleWithForbidden,
+      showActiveTabBorder: hasRoute && (editingMenu.value?.showActiveTabBorder ?? false),
+      tabPath: hasRoute && !menuForm.hideInTab ? menuForm.tabPath.trim() || null : null,
+    }
+
     if (editingMenu.value) await systemMenuApi.update(editingMenu.value.id, body)
     else await systemMenuApi.create({ id: event.data.id, ...body })
     menuSlideoverOpen.value = false
     toast.add({ title: editingMenu.value ? '菜单节点已更新' : '菜单节点已创建', color: 'success', icon: 'i-lucide-circle-check' })
     await loadData()
-  } catch (error) {
-    toast.add({ title: '保存菜单节点失败', description: getApiErrorMessage(error), color: 'error' })
-  } finally {
-    saving.value = false
-  }
-}
+  },
+})
 
 async function requestDeleteMenu(menu: SystemMenuApi.Node) {
   const groupHasChildren = menu.type === 'group' && Boolean(menu.children?.length)
@@ -352,8 +350,6 @@ async function requestDeleteMenu(menu: SystemMenuApi.Node) {
         : `将永久删除“${menu.title}”及其全部后代，共 ${countMenuSubtree(menu)} 个节点，同时移除所有角色关联。此操作不可撤销。`,
     confirmLabel: '确认删除',
     confirmDisabled: groupHasChildren,
-    errorTitle: '删除菜单节点失败',
-    formatError: getApiErrorMessage,
     onConfirm: async () => {
       const result = await systemMenuApi.delete(menu.id)
       toast.add({ title: menu.type === 'group' ? '菜单分组已删除' : '菜单已删除', description: `共删除 ${result.deletedCount} 个节点。`, color: 'success' })
@@ -361,8 +357,6 @@ async function requestDeleteMenu(menu: SystemMenuApi.Node) {
     },
   })
 }
-
-onMounted(loadData)
 </script>
 
 <template>

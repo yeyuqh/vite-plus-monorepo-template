@@ -12,9 +12,9 @@ async function bootstrap(namespace: string) {
   const app = createApp(App)
 
   app.use(createPinia())
+  app.use(VueQueryPlugin)
   app.use(router)
   app.use(NuxtUI)
-  app.use(VueQueryPlugin)
 
   app.mount('#app')
 }

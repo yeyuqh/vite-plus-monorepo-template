@@ -28,7 +28,6 @@ const router = useRouter()
 const accessStore = useAdminAccessStore()
 const authStore = useAdminAuthStore()
 const userStore = useAdminUserStore()
-const errorMessage = ref('')
 const captchaError = ref('')
 const captchaProgress = ref(0)
 const captchaStatus = ref<'error' | 'idle' | 'verified' | 'verifying'>('idle')
@@ -65,8 +64,6 @@ async function handleLogin(event: FormSubmitEvent<Credentials>) {
     return
   }
 
-  errorMessage.value = ''
-
   try {
     await authStore.authLogin(
       {
@@ -81,8 +78,8 @@ async function handleLogin(event: FormSubmitEvent<Credentials>) {
         await router.replace(redirect)
       },
     )
-  } catch (error) {
-    errorMessage.value = getErrorMessage(error)
+  } catch {
+    // 登录失败后验证码需要重新验证，请求错误由响应拦截器统一处理。
     resetCaptcha()
   }
 }
@@ -102,10 +99,10 @@ function getCaptchaClient() {
   return captchaClient
 }
 
-function getErrorMessage(error: unknown) {
+function getCaptchaErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message
   if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string') return error.message
-  return '登录失败，请稍后重试'
+  return '安全验证失败，请重试'
 }
 
 async function verifyCaptcha() {
@@ -115,7 +112,6 @@ async function verifyCaptcha() {
   captchaProgress.value = 0
   captchaToken.value = ''
   captchaError.value = ''
-  errorMessage.value = ''
 
   try {
     const client = getCaptchaClient()
@@ -128,7 +124,7 @@ async function verifyCaptcha() {
     captchaStatus.value = 'verified'
   } catch (error) {
     captchaStatus.value = 'error'
-    captchaError.value = getErrorMessage(error)
+    captchaError.value = getCaptchaErrorMessage(error)
   }
 }
 
@@ -142,7 +138,6 @@ function resetCaptcha() {
 function useDemoAccount(type: 'admin' | 'user') {
   form.username = type
   form.password = '123456'
-  errorMessage.value = ''
 }
 </script>
 
@@ -192,8 +187,6 @@ function useDemoAccount(type: 'admin' | 'user') {
             </div>
           </div>
         </UFormField>
-
-        <UAlert v-if="errorMessage" color="error" variant="soft" :title="errorMessage" />
 
         <UButton block :disabled="captchaStatus !== 'verified'" :loading="authStore.loginLoading" type="submit">登录</UButton>
       </UForm>
