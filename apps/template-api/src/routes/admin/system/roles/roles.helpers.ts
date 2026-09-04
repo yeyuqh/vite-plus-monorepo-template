@@ -10,40 +10,12 @@ import { systemMenuRoles } from '@/db/schema'
 
 import { withLock } from '@/lib/infrastructure'
 import { enforcerPromise } from '@/lib/services/casbin'
+import { getAdminPermissionCatalog } from '@/lib/services/casbin/permission-catalog'
+import { getRoleApiPermissions } from '@/lib/services/casbin/permissions'
 import { buildMenuTree, loadMenuRows, replaceRoleMenuLinks } from '../menus/menus.helpers'
 import type { RoleMenuAuthorizationNode } from './roles.schema'
 
-type AdminRouteDefinition = {
-  method: string | string[]
-  path: string
-  summary?: string
-  tags?: string[]
-}
-
-const adminRouteModules = import.meta.glob<Record<string, unknown>>('/src/routes/admin/**/*.routes.ts', { eager: true })
-
-function isAdminRouteDefinition(value: unknown): value is AdminRouteDefinition {
-  if (typeof value !== 'object' || value === null) return false
-  const route = value as Partial<AdminRouteDefinition>
-  return typeof route.path === 'string' && (typeof route.method === 'string' || (Array.isArray(route.method) && route.method.every((method) => typeof method === 'string')))
-}
-
-export function getAdminPermissionCatalog() {
-  const catalog = Object.values(adminRouteModules)
-    .flatMap((module) => Object.values(module))
-    .filter(isAdminRouteDefinition)
-    .filter(({ path }) => !path.startsWith('/auth'))
-    .flatMap((route) =>
-      (Array.isArray(route.method) ? route.method : [route.method]).map((method) => ({
-        resource: route.path,
-        action: method.toUpperCase(),
-        summary: route.summary ?? route.path,
-        group: route.tags?.[0] ?? '其他',
-      })),
-    )
-
-  return [...new Map(catalog.map((item) => [`${item.resource}\u0000${item.action}`, item])).values()].sort((a, b) => `${a.resource}\u0000${a.action}`.localeCompare(`${b.resource}\u0000${b.action}`))
-}
+export { getAdminPermissionCatalog } from '@/lib/services/casbin/permission-catalog'
 
 /**
  * Get all parent roles for a role
@@ -333,7 +305,10 @@ export async function getRolePermissionsAndGroupings(roleId: string) {
   const enforcer = await enforcerPromise
 
   // Get all implicit permissions (including inherited) / 获取所有隐式权限（包括继承的）
-  const [allImplicitPermissions, directPermissions] = await Promise.all([enforcer.getImplicitPermissionsForUser(roleId), enforcer.getPermissionsForUser(roleId)])
+  const [allImplicitPermissions, directPermissions] = await Promise.all([
+    getRoleApiPermissions(enforcer, roleId),
+    roleId === 'admin' ? getRoleApiPermissions(enforcer, roleId) : enforcer.getPermissionsForUser(roleId),
+  ])
   const directKeys = new Set(directPermissions.map((permission) => `${permission[1]}\u0000${permission[2]}`))
 
   const permissions = allImplicitPermissions.map((p) => ({

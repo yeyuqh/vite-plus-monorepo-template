@@ -14,6 +14,7 @@ import { ACCESS_TOKEN_EXPIRES_MINUTES, REFRESH_TOKEN_EXPIRES_DAYS } from '@/lib/
 import { Status } from '@/lib/enums'
 import cap from '@/lib/services/cap'
 import { enforcerPromise } from '@/lib/services/casbin'
+import { getRoleApiPermissions } from '@/lib/services/casbin/permissions'
 import redisClient from '@/lib/services/redis'
 
 import { resolveEffectiveAdminRoles } from './access.helpers'
@@ -229,7 +230,7 @@ export async function getPermissionsByRoles(roles: string[]) {
   const permissionsSet = new Set<string>()
   const groupingsSet = new Set<string>()
 
-  const allPermsArrays = await Promise.all(roles.map((role) => casbinEnforcer.getImplicitPermissionsForUser(role)))
+  const allPermsArrays = await Promise.all(roles.map((role) => getRoleApiPermissions(casbinEnforcer, role)))
 
   // Process permissions for all roles / 处理所有角色的权限
   for (const perms of allPermsArrays) {

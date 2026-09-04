@@ -14,6 +14,18 @@ import { stripPrefix } from '@monorepo/utils'
  * 用于校验当前用户是否有访问指定接口的权限
  */
 export const authorize = createAdminMiddleware(async (c, next) => {
+  const { roles } = c.get('jwtPayload')
+
+  if (!Array.isArray(roles)) {
+    return c.json(Resp.fail(HttpStatusPhrases.FORBIDDEN), HttpStatusCodes.FORBIDDEN)
+  }
+
+  // admin 自动拥有管理端接口权限，不依赖 seed 中的静态策略。
+  if (roles.includes('admin')) {
+    await next()
+    return
+  }
+
   // Get Casbin permission enforcer / 获取 Casbin 权限管理器
   const enforcer = await enforcerPromise
 
@@ -21,9 +33,6 @@ export const authorize = createAdminMiddleware(async (c, next) => {
   if (!(enforcer instanceof Enforcer)) {
     return c.json(Resp.fail(HttpStatusPhrases.INTERNAL_SERVER_ERROR), HttpStatusCodes.INTERNAL_SERVER_ERROR)
   }
-
-  // Get user roles from JWT payload (type auto-inferred) / 从 JWT 载荷中获取用户角色（类型自动推断）
-  const { roles } = c.get('jwtPayload')
 
   // Strip API prefix to get the actual request path / 去除 API 前缀，获取实际请求路径
   const path = stripPrefix(c.req.path, c.get('tierBasePath') ?? '')

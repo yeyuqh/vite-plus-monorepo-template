@@ -137,19 +137,40 @@ test('stores backend permission codes and exposes permission checks', () => {
   expect(store.hasPermission('system:role:create')).toBe(false)
 })
 
-test('supports segmented permission wildcards', () => {
+test('allows the admin permission marker to match codes of any depth', () => {
   const store = useAdminAccessStore()
 
   store.initializeAccess({ menus: [], permissionCodes: ['*:*:*'] }, ['admin'])
 
   expect(store.hasPermission('system:role:create')).toBe(true)
   expect(store.hasPermission('system:user:delete')).toBe(true)
-  expect(store.hasPermission('system:role')).toBe(false)
+  expect(store.hasPermission('factory:create')).toBe(true)
+  expect(store.hasPermission('model-asset:delete')).toBe(true)
+  expect(store.hasPermission('system:role')).toBe(true)
+  expect(store.hasPermission('dashboard')).toBe(true)
+  expect(store.hasPermission('tenant:factory:model:update')).toBe(true)
+
+  store.resetAccess()
+  expect(store.hasPermission('factory:create')).toBe(false)
+})
+
+test('keeps ordinary segmented wildcards scoped to matching domains and depth', () => {
+  const store = useAdminAccessStore()
 
   store.initializeAccess({ menus: [], permissionCodes: ['system:role:*'] }, ['operator'])
 
   expect(store.hasPermission('system:role:create')).toBe(true)
   expect(store.hasPermission('system:user:create')).toBe(false)
+  expect(store.hasPermission('system:role')).toBe(false)
+  expect(store.hasPermission('system:role:create:extra')).toBe(false)
+  expect(store.hasPermission('factory:create')).toBe(false)
+
+  store.initializeAccess({ menus: [], permissionCodes: ['factory:*', 'model-asset:read'] }, ['operator'])
+
+  expect(store.hasPermission('factory:create')).toBe(true)
+  expect(store.hasPermission('factory:model:create')).toBe(false)
+  expect(store.hasPermission('model-asset:read')).toBe(true)
+  expect(store.hasPermission('model-asset:delete')).toBe(false)
 })
 
 test('resets generated access when the token changes', () => {
