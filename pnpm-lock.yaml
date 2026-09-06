@@ -310,6 +310,9 @@ importers:
       '@monorepo/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@monorepo/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       '@monorepo/vite-plugin-app-config':
         specifier: workspace:*
         version: link:../../packages/vite-plugin-app-config

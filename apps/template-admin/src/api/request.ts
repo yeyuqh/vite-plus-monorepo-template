@@ -1,5 +1,5 @@
 import type { RequestClientOptions } from '@monorepo/request'
-
+import { isRecord } from '@monorepo/utils'
 import { RequestClient, defaultResponseInterceptor, authenticateResponseInterceptor, errorMessageResponseInterceptor } from '@monorepo/request'
 import { adminAppConfig } from '@/config/app'
 import { ADMIN_ACCESS_TOKEN_STORAGE_KEY } from '@/constants/storage'
@@ -50,7 +50,10 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
 
   client.addResponseInterceptor(
     errorMessageResponseInterceptor((message, error) => {
-      console.error('请求错误', message, error)
+      const response = isRecord(error) ? error.response : void 0
+      const responseData = isRecord(response) && isRecord(response.data) ? response.data : {}
+      const errorMessage = responseData?.error ?? responseData?.message ?? ''
+      console.log('[errorMessage]-55', errorMessage || message)
     }),
   )
 

@@ -162,7 +162,7 @@ export const errorMessageResponseInterceptor = (makeErrorMessage?: MakeErrorMess
       return Promise.reject(error)
     }
 
-    const status = axios.isAxiosError(error) ? error.response?.status : undefined
+    const status = axios.isAxiosError(error) ? error.response?.status : void 0
     makeErrorMessage?.(getStatusErrorMessage(status), error)
     return Promise.reject(error)
   },
