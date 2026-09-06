@@ -13,6 +13,11 @@
       "development": "./src/index.ts",
       "default": "./dist/index.mjs"
     },
+    "./node": {
+      "types": "./src/node.ts",
+      "development": "./src/node.ts",
+      "default": "./dist/node.mjs"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -20,6 +25,10 @@
       ".": {
         "types": "./dist/index.d.ts",
         "default": "./dist/index.mjs"
+      },
+      "./node": {
+        "types": "./dist/node.d.ts",
+        "default": "./dist/node.mjs"
       },
       "./package.json": "./package.json"
     },

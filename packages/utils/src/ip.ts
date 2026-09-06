@@ -35,5 +35,5 @@ export function isPrivateIp(ip: string, ipVersion: 4 | 6): boolean {
 
   const [a, b] = ip.split('.', 3).map(Number)
 
-  return a === 127 || a === 10 || (a === 192 && b === 168) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31)
+  return a === 127 || a === 10 || (a === 192 && b === 168) || (a === 169 && b === 254) || (a === 172 && b !== undefined && b >= 16 && b <= 31)
 }
