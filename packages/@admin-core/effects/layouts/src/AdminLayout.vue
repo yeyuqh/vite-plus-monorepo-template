@@ -39,7 +39,7 @@ const menuGroups = computed(() => markActiveAdminMenuGroups(props.menuGroups, ac
           <UButton
             v-else
             data-sidebar-toggle
-            :icon="sidebarOpen ? 'i-lucide-x' : 'i-lucide-menu'"
+            icon="i-lucide-menu"
             :aria-label="sidebarOpen ? '隐藏边栏' : '显示边栏'"
             :aria-expanded="sidebarOpen"
             title="显示或隐藏边栏"
