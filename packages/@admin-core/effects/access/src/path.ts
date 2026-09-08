@@ -1,6 +1,10 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
+export function hasAdminRouteTarget(route: RouteRecordRaw) {
+  return Boolean(route.component || route.components || route.redirect)
+}
+
 export function normalizeAdminPath(path: string) {
   if (!path) return '/'
   const pathname = path.split(/[?#]/)[0] ?? '/'

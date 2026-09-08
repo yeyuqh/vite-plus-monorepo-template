@@ -11,6 +11,10 @@ export interface AdminRouteMeta {
   description?: string
   /** 将菜单跳转目标替换为外部链接地址 */
   externalLink?: string
+  /** false 时以路径作为 Tab 标识，忽略 query 和 hash；默认使用完整地址 */
+  fullPathKey?: boolean
+  /** 同一路由名称允许打开的 Tab 数量，正数生效 */
+  maxNumOfOpenTab?: number
   /** 在面包屑中隐藏该路由 */
   hideInBreadcrumb?: boolean
   /** 在菜单中隐藏该路由 */
@@ -31,6 +35,10 @@ export interface AdminRouteMeta {
   layout?: string | false
   /** 指定该路由所属的菜单分组，并可配置分组标题和排序 */
   group?: AdminGroupMeta | string
+  /** 后端菜单标识，由权限路由解析阶段写入 */
+  menuId?: string
+  /** 保留目录与页面的区别，避免空目录被渲染为页面入口 */
+  menuType?: 'directory' | 'menu'
   /** 菜单可见 但权限不命中时访问页面渲染 403 */
   menuVisibleWithForbidden?: boolean
   /** 控制菜单项或菜单分组的升序排序权重 */
@@ -67,4 +75,13 @@ export interface AdminNavigationRouteRecord {
    * - 默认等于 `path`。当 `meta.tabPath` 存在时使用其规范化路径，表示当前页面复用指定标签页
    */
   tabPath?: string
+}
+
+/** 规范化后的导航树；路径和分组已解析，菜单直接消费 children。 */
+export interface AdminNavigationRouteNode extends AdminNavigationRouteRecord {
+  id: string
+  type: 'directory' | 'menu'
+  /** 目录也可能配置页面、重定向或嵌入内容，只有无跳转目标的空节点才应被裁剪 */
+  navigable: boolean
+  children?: AdminNavigationRouteNode[]
 }

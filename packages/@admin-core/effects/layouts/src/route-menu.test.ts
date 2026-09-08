@@ -1,333 +1,186 @@
+import type { AdminNavigationRouteNode, AdminRouteMeta } from '@monorepo-admin-core/types'
 import { afterEach, expect, test, vi } from 'vite-plus/test'
 import { buildAdminMenuGroups, buildAdminMenus, markActiveAdminMenuGroups, markActiveAdminMenus } from './route-menu'
 
-afterEach(() => {
-  vi.restoreAllMocks()
+function page(path: string, meta: AdminRouteMeta = {}, children?: AdminNavigationRouteNode[]): AdminNavigationRouteNode {
+  return { id: path, type: 'menu', navigable: true, path, meta: { title: path, ...meta }, children }
+}
+
+function deepTree() {
+  return [
+    page('/one', { icon: 'i-lucide-one' }, [
+      page('/one/two', { icon: 'i-lucide-two' }, [
+        page('/one/two/three', { icon: 'i-lucide-three' }, [
+          page('/one/two/three/four', { order: 10 }),
+          page('/one/two/three/five/six', { order: 20 }),
+          page('/one/two/three/hidden', { hideInMenu: true }),
+        ]),
+      ]),
+    ]),
+  ]
+}
+
+afterEach(() => vi.restoreAllMocks())
+
+test('builds sorted trees and derives missing parent order from visible children', () => {
+  const tree = [
+    page('/system', { title: 'System' }, [page('/system/role', { title: '角色管理', order: 20 }), page('/system/user', { title: '用户管理', order: 10 })]),
+    page('/dashboard', { title: 'Dashboard', order: 5 }),
+    page('/hidden/audit', { hideInMenu: true, order: 1 }),
+  ]
+  const before = structuredClone(tree)
+  const menus = buildAdminMenus(tree)
+
+  expect(menus.map(({ id, order }) => ({ id, order }))).toEqual([
+    { id: '/dashboard', order: 5 },
+    { id: '/system', order: 10 },
+  ])
+  expect(menus[1]?.children?.map(({ id }) => id)).toEqual(['/system/user', '/system/role'])
+  expect(tree).toEqual(before)
 })
 
-test('builds sorted menu trees from visible route meta', () => {
-  const menus = buildAdminMenus([
-    { path: '/system', meta: { title: 'System', order: 10 } },
-    { path: '/system/role', parentPath: '/system', meta: { title: '角色管理', icon: 'i-lucide-shield', order: 20 } },
-    { path: '/dashboard', meta: { title: 'Dashboard', order: 10 } },
-    { path: '/dashboard/workbench', parentPath: '/dashboard', meta: { title: '工作台', icon: 'i-lucide-layout-dashboard', order: 10 } },
-    { path: '/system/user', parentPath: '/system', meta: { title: '用户管理', icon: 'i-lucide-users', order: 10 } },
-    { path: '/hidden/audit', meta: { title: '审计日志', hideInMenu: true, order: 1 } },
-  ])
-
-  expect(menus).toEqual([
-    {
-      children: [
-        {
-          children: undefined,
-          id: '/dashboard/workbench',
-          order: 10,
-          path: '/dashboard/workbench',
-          title: '工作台',
-          icon: 'i-lucide-layout-dashboard',
-          activePath: undefined,
-          authority: undefined,
-          externalLink: undefined,
-        },
-      ],
-      id: '/dashboard',
-      order: 10,
-      path: '/dashboard',
-      title: 'Dashboard',
-      activePath: undefined,
-      authority: undefined,
-      externalLink: undefined,
-      icon: undefined,
-    },
-    {
-      children: [
-        {
-          children: undefined,
-          id: '/system/user',
-          order: 10,
-          path: '/system/user',
-          title: '用户管理',
-          icon: 'i-lucide-users',
-          activePath: undefined,
-          authority: undefined,
-          externalLink: undefined,
-        },
-        {
-          children: undefined,
-          id: '/system/role',
-          order: 20,
-          path: '/system/role',
-          title: '角色管理',
-          icon: 'i-lucide-shield',
-          activePath: undefined,
-          authority: undefined,
-          externalLink: undefined,
-        },
-      ],
-      id: '/system',
-      order: 10,
-      path: '/system',
-      title: 'System',
-      activePath: undefined,
-      authority: undefined,
-      externalLink: undefined,
-      icon: undefined,
-    },
-  ])
+test('preserves path order for equal titles and weights even when backend ids sort differently', () => {
+  const menus = buildAdminMenus([{ ...page('/first', { title: 'Same' }), id: 'b' }, { ...page('/second', { title: 'Same' }), id: 'a' }, page('/third', { title: 'Alpha' })])
+  expect(menus.map(({ id }) => id)).toEqual(['/third', 'b', 'a'])
 })
 
-test('keeps a root external link with a multi-segment path at the root level', () => {
+test('preserves backend ids and keeps a multi-segment external link at the root', () => {
   const menus = buildAdminMenus([
     {
-      path: '/external/docs',
-      meta: {
-        authority: ['admin'],
-        externalLink: 'https://viteplus.dev/guide/',
-        icon: 'i-lucide-book-open',
-        title: 'Vite+ Docs',
-      },
+      ...page('/external/docs', { authority: ['admin'], externalLink: 'https://viteplus.dev/guide/', icon: 'i-lucide-book-open', title: 'Docs' }),
+      id: 'documentation',
     },
   ])
-
   expect(menus).toHaveLength(1)
   expect(menus[0]).toMatchObject({
-    authority: ['admin'],
-    children: undefined,
-    externalLink: 'https://viteplus.dev/guide/',
-    id: '/external/docs',
+    id: 'documentation',
     path: 'https://viteplus.dev/guide/',
-    title: 'Vite+ Docs',
-  })
-})
-
-test('marks current item and ancestors active', () => {
-  const menus = markActiveAdminMenus(
-    buildAdminMenus([
-      { path: '/system', meta: { title: '系统' } },
-      { path: '/system/user', parentPath: '/system', meta: { title: '用户管理', order: 10 } },
-      { path: '/system/role', parentPath: '/system', meta: { title: '角色管理', order: 20 } },
-    ]),
-    '/system/role',
-  )
-
-  expect(menus[0]?.active).toBe(true)
-  expect(menus[0]?.children?.[0]?.active).toBe(false)
-  expect(menus[0]?.children?.[1]?.active).toBe(true)
-})
-
-test('builds third-level menu items without promotion', () => {
-  const menus = buildAdminMenus([
-    { path: '/one', meta: { title: 'One', icon: 'i-lucide-one' } },
-    { path: '/one/two', parentPath: '/one', meta: { title: 'Two', icon: 'i-lucide-two' } },
-    { path: '/one/two/three', parentPath: '/one/two', meta: { title: 'Three', icon: 'i-lucide-three' } },
-  ])
-
-  expect(menus[0]?.icon).toBe('i-lucide-one')
-  expect(menus[0]?.children?.[0]?.icon).toBe('i-lucide-two')
-  expect(menus[0]?.children?.[0]?.children?.[0]).toMatchObject({
+    activePath: '/external/docs',
+    authority: ['admin'],
+    icon: 'i-lucide-book-open',
+    title: 'Docs',
     children: undefined,
-    icon: undefined,
-    id: '/one/two/three',
-    path: '/one/two/three',
-    title: 'Three',
   })
 })
 
-test('marks every ancestor of a third-level menu item active', () => {
-  const menus = markActiveAdminMenus(
-    buildAdminMenus([
-      { path: '/one', meta: { title: 'One' } },
-      { path: '/one/two', parentPath: '/one', meta: { title: 'Two' } },
-      { path: '/one/two/three', parentPath: '/one/two', meta: { title: 'Three' } },
-    ]),
-    '/one/two/three',
-  )
-
-  expect(menus[0]?.active).toBe(true)
-  expect(menus[0]?.children?.[0]?.active).toBe(true)
-  expect(menus[0]?.children?.[0]?.children?.[0]?.active).toBe(true)
+test('keeps three levels and preserves icons for the renderer to control their visibility', () => {
+  const menus = buildAdminMenus([page('/one', {}, [page('/one/two', {}, [page('/one/two/three', { icon: 'i-lucide-three' })])])])
+  expect(menus[0]?.children?.[0]?.children?.[0]).toMatchObject({ id: '/one/two/three', icon: 'i-lucide-three', children: undefined })
 })
 
-test('promotes visible deep routes to distinct third-level menu items and warns', () => {
+test('promotes every visible deep page to the third level and warns', () => {
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-  const menus = buildAdminMenus([
-    { path: '/one', meta: { title: 'One' } },
-    { path: '/one/two', parentPath: '/one', meta: { title: 'Two' } },
-    { path: '/one/two/three', parentPath: '/one/two', meta: { title: 'Three' } },
-    { path: '/one/two/three/four', parentPath: '/one/two/three', meta: { title: 'Four', order: 10 } },
-    { path: '/one/two/three/five/six', parentPath: '/one/two/three', meta: { title: 'Six', order: 20 } },
-    { path: '/one/two/three/hidden', parentPath: '/one/two/three', meta: { hideInMenu: true, title: 'Hidden' } },
-  ])
-
-  expect(menus[0]?.children?.[0]?.children).toMatchObject([
-    {
-      id: '/one/two/three',
-      path: '/one/two/three',
-      title: 'Three',
-    },
-    {
-      children: undefined,
-      id: '/one/two/three/four',
-      path: '/one/two/three/four',
-      title: 'Four',
-    },
-    {
-      children: undefined,
-      id: '/one/two/three/five/six',
-      path: '/one/two/three/five/six',
-      title: 'Six',
-    },
+  const menus = buildAdminMenus(deepTree())
+  expect(menus[0]?.children?.[0]?.children?.map(({ id, children }) => ({ id, children }))).toEqual([
+    { id: '/one/two/three', children: undefined },
+    { id: '/one/two/three/four', children: undefined },
+    { id: '/one/two/three/five/six', children: undefined },
   ])
   expect(warn).toHaveBeenCalledTimes(2)
   expect(warn).toHaveBeenNthCalledWith(1, expect.stringContaining('/one/two/three/four'))
   expect(warn).toHaveBeenNthCalledWith(2, expect.stringContaining('/one/two/three/five/six'))
 })
 
-test('clamps configured menu depth to three levels', () => {
+test('clamps the maximum depth to three', () => {
   vi.spyOn(console, 'warn').mockImplementation(() => {})
-  const menus = buildAdminMenus(
-    [
-      { path: '/one', meta: { title: 'One' } },
-      { path: '/one/two', parentPath: '/one', meta: { title: 'Two' } },
-      { path: '/one/two/three', parentPath: '/one/two', meta: { title: 'Three' } },
-      { path: '/one/two/three/four', parentPath: '/one/two/three', meta: { title: 'Four' } },
-    ],
-    { maxDepth: 4 },
-  )
-
-  expect(menus[0]?.children?.[0]?.children?.find((item) => item.id === '/one/two/three/four')).toMatchObject({
-    children: undefined,
-    id: '/one/two/three/four',
-    path: '/one/two/three/four',
-    title: 'Four',
-  })
+  expect(buildAdminMenus(deepTree(), { maxDepth: 4 })).toEqual(buildAdminMenus(deepTree()))
 })
 
-test('builds sorted menu groups from route meta', () => {
-  const groups = buildAdminMenuGroups([
-    { path: '/system', meta: { title: 'System', group: { label: '系统管理', order: 20 } } },
-    { path: '/system/role', parentPath: '/system', meta: { title: '角色管理', order: 20 } },
-    { path: '/dashboard', meta: { title: 'Dashboard', group: { label: '概览', order: 10 } } },
-    { path: '/dashboard/workbench', parentPath: '/dashboard', meta: { title: '工作台', order: 10 } },
-    { path: '/system/settings', parentPath: '/system', meta: { title: '系统设置', order: 30 } },
-    { path: '/docs/vite-plus', meta: { title: 'Vite+ Docs', group: { id: 'links', label: '链接', order: 30 } } },
-    { path: '/hidden/audit', meta: { title: '审计日志', hideInMenu: true, group: '隐藏' } },
-  ])
-
-  expect(groups).toHaveLength(3)
-  expect(groups.map((group) => group.label)).toEqual(['概览', '系统管理', '链接'])
-  expect(groups[1]).toMatchObject({
-    id: 'group:系统管理',
-    label: '系统管理',
-  })
-  expect(groups[1]?.children[0]).toMatchObject({
-    id: '/system',
-    title: 'System',
-    children: [
-      { id: '/system/role', title: '角色管理' },
-      { id: '/system/settings', title: '系统设置' },
-    ],
-  })
+test('supports a single-level menu without losing deep pages', () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const menus = buildAdminMenus(deepTree(), { maxDepth: 1 })
+  expect(menus).toHaveLength(5)
+  expect(menus.every((item) => !item.children)).toBe(true)
 })
 
-test('uses an unlabeled default group for routes without group', () => {
-  const groups = buildAdminMenuGroups([
-    { path: '/dashboard', meta: { title: 'Dashboard' } },
-    { path: '/dashboard/workbench', parentPath: '/dashboard', meta: { title: '工作台' } },
-  ])
+test('promotes deep pages past the depth limit without leaving an empty directory link', () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const menus = buildAdminMenus([page('/one', {}, [page('/one/two', {}, [{ ...page('/one/two/three', {}, [page('/one/two/three/four')]), type: 'directory', navigable: false }])])])
+  expect(menus[0]?.children?.[0]?.children).toMatchObject([{ id: '/one/two/three/four', children: undefined }])
+  expect(menus[0]?.children?.[0]?.children).toHaveLength(1)
+})
 
-  expect(groups).toEqual([
+test('sorts explicit groups before the unlabeled default group', () => {
+  const groups = buildAdminMenuGroups([
+    page('/ungrouped', { order: -10 }),
+    page('/last-group', { group: { id: 'last', label: 'Last', order: 999 } }),
+    page('/first-group', { group: { label: 'First', order: 10 } }),
+  ])
+  expect(groups.map(({ id }) => id)).toEqual(['group:First', 'last', 'default'])
+  expect(groups[2]).toMatchObject({ label: undefined, children: [{ id: '/ungrouped' }] })
+})
+
+test('keeps the resolved group on every level of a menu tree', () => {
+  const group = { id: 'operations', label: '运维', order: 10 }
+  const groups = buildAdminMenuGroups([page('/monitor', { group }, [page('/monitor/jobs', { group }, [page('/monitor/jobs/history', { group })])])])
+  expect(groups).toHaveLength(1)
+  expect(groups[0]).toMatchObject({ id: 'operations', label: '运维', order: 10 })
+  expect(groups[0]?.children[0]?.children?.[0]?.children?.[0]?.id).toBe('/monitor/jobs/history')
+})
+
+test('moves an explicit child group to its own root and drops the emptied directory', () => {
+  const groups = buildAdminMenuGroups([
     {
-      children: [
-        {
-          activePath: undefined,
-          authority: undefined,
-          children: [
-            {
-              activePath: undefined,
-              authority: undefined,
-              children: undefined,
-              externalLink: undefined,
-              icon: undefined,
-              id: '/dashboard/workbench',
-              order: 0,
-              path: '/dashboard/workbench',
-              title: '工作台',
-            },
-          ],
-          externalLink: undefined,
-          icon: undefined,
-          id: '/dashboard',
-          order: 0,
-          path: '/dashboard',
-          title: 'Dashboard',
-        },
-      ],
-      id: 'default',
-      label: undefined,
-      order: undefined,
+      ...page('/parent', { group: 'A' }, [page('/parent/child', { group: 'B' })]),
+      type: 'directory',
+      navigable: false,
     },
   ])
-})
-
-test('places routes without group after all explicit menu groups', () => {
-  const groups = buildAdminMenuGroups([
-    { path: '/ungrouped', meta: { title: 'Ungrouped', order: 1 } },
-    { path: '/last-group', meta: { title: 'Last group', group: { label: 'Last', order: 999 } } },
-    { path: '/first-group', meta: { title: 'First group', group: { label: 'First', order: 10 } } },
-  ])
-
-  expect(groups.map((group) => group.id)).toEqual(['group:First', 'group:Last', 'default'])
-})
-
-test('inherits grouped menu children from nearest parent group', () => {
-  const groups = buildAdminMenuGroups([
-    { path: '/monitor', meta: { title: '监控', group: { label: '运维', order: 10 } } },
-    { path: '/monitor/jobs', parentPath: '/monitor', meta: { title: '任务监控' } },
-  ])
-
   expect(groups).toHaveLength(1)
-  expect(groups[0]).toMatchObject({
-    id: 'group:运维',
-    label: '运维',
-    order: 10,
-    children: [
-      {
-        id: '/monitor',
-        title: '监控',
-        children: [{ id: '/monitor/jobs', title: '任务监控' }],
-      },
-    ],
-  })
+  expect(groups[0]).toMatchObject({ id: 'group:B', children: [{ id: '/parent/child', children: undefined }] })
 })
 
-test('builds grouped routes to the third item level by default', () => {
-  const groups = buildAdminMenuGroups([
-    { path: '/one', meta: { title: 'One', group: 'Deep' } },
-    { path: '/one/two', parentPath: '/one', meta: { title: 'Two' } },
-    { path: '/one/two/three', parentPath: '/one/two', meta: { title: 'Three' } },
+test('applies a custom default group and can build ungrouped menus from the same tree', () => {
+  const routes = [page('/parent', { group: 'A' }, [page('/parent/child', { group: 'B' })]), page('/default')]
+  const groups = buildAdminMenuGroups(routes, { defaultGroup: { id: 'misc', label: '其他', order: -100 } })
+  expect(groups.at(-1)).toMatchObject({ id: 'misc', label: '其他' })
+  expect(buildAdminMenus(routes).find((item) => item.id === '/parent')?.children?.[0]?.id).toBe('/parent/child')
+})
+
+test('omits empty directories and keeps page nodes whose children are hidden', () => {
+  const menus = buildAdminMenus([
+    { ...page('/empty'), type: 'directory', navigable: false },
+    { ...page('/directory', {}, [page('/directory/hidden', { hideInMenu: true })]), type: 'directory', navigable: false },
+    page('/page', {}, [page('/page/hidden', { hideInMenu: true })]),
   ])
-
-  expect(groups[0]?.children[0]?.children?.[0]?.children?.[0]).toMatchObject({
-    children: undefined,
-    id: '/one/two/three',
-    path: '/one/two/three',
-    title: 'Three',
-  })
+  expect(menus.map(({ id }) => id)).toEqual(['/page'])
 })
 
-test('marks current grouped menu items active without mutating group state', () => {
-  const groups = markActiveAdminMenuGroups(
-    buildAdminMenuGroups([
-      { path: '/system', meta: { title: '系统', group: '系统管理' } },
-      { path: '/system/user', parentPath: '/system', meta: { title: '用户管理', order: 10 } },
-      { path: '/system/role', parentPath: '/system', meta: { title: '角色管理', order: 20 } },
-    ]),
-    '/system/role',
-  )
+test('promotes children of hidden nodes without inferring parents from the URL', () => {
+  const menus = buildAdminMenus([page('/root', {}, [page('/root/hidden', { hideInMenu: true }, [page('/root/hidden/visible')])])])
+  expect(menus.map(({ id }) => id)).toEqual(['/root', '/root/hidden/visible'])
+  expect(menus.every((item) => !item.children)).toBe(true)
+})
 
-  expect('active' in groups[0]!).toBe(false)
-  expect(groups[0]?.children[0]?.active).toBe(true)
-  expect(groups[0]?.children[0]?.children?.[0]?.active).toBe(false)
-  expect(groups[0]?.children[0]?.children?.[1]?.active).toBe(true)
+test('does not expose dynamic, catch-all, root or untitled routes as menus', () => {
+  const routes = [page('/'), page('/users/:id'), page('/files/*'), page('/files/(.*)'), page('/untitled', { title: '' }), page('/visible')]
+  expect(buildAdminMenus(routes).map(({ id }) => id)).toEqual(['/visible'])
+})
+
+test('marks only the exact menu and its real ancestors, even when URLs do not reflect the tree', () => {
+  const menus = buildAdminMenus([page('/reports'), page('/catalog', {}, [page('/reports/sales')])])
+  const marked = markActiveAdminMenus(menus, '/reports/sales?range=month#chart')
+  expect(marked.find((item) => item.id === '/reports')?.active).toBe(false)
+  expect(marked.find((item) => item.id === '/catalog')?.active).toBe(true)
+  expect(marked.find((item) => item.id === '/catalog')?.children?.[0]?.active).toBe(true)
+  expect(menus.every((item) => item.active === undefined)).toBe(true)
+})
+
+test('does not activate a visible detail entry merely because it points to another active menu', () => {
+  const menus = buildAdminMenus([page('/list'), { ...page('/detail', { activePath: '/list' }), activePath: '/list' }])
+  expect(
+    markActiveAdminMenus(menus, '/list')
+      .filter((item) => item.active)
+      .map(({ id }) => id),
+  ).toEqual(['/list'])
+})
+
+test('marks all three levels in a group without mutating its state', () => {
+  const groups = buildAdminMenuGroups([page('/one', {}, [page('/one/two', {}, [page('/one/two/three')])])])
+  const before = structuredClone(groups)
+  const marked = markActiveAdminMenuGroups(groups, '/one/two/three')
+  expect(marked[0]?.children[0]?.active).toBe(true)
+  expect(marked[0]?.children[0]?.children?.[0]?.active).toBe(true)
+  expect(marked[0]?.children[0]?.children?.[0]?.children?.[0]?.active).toBe(true)
+  expect(groups).toEqual(before)
 })

@@ -1,39 +1,27 @@
 import type { AdminRouteMeta } from '@monorepo-admin-core/types'
 import type { RouteRecordRaw } from 'vue-router'
+import { hasAdminRouteTarget } from './path'
 
 export type AdminForbiddenComponent = RouteRecordRaw['component']
 
 export function filterRoutesByAuthority(routes: readonly RouteRecordRaw[], roles: readonly string[], forbiddenComponent: AdminForbiddenComponent): RouteRecordRaw[] {
   return routes.flatMap((route) => {
     const meta = route.meta as AdminRouteMeta | undefined
-    if (!hasRouteAuthority(meta, roles)) return []
+    const allowed = !meta?.authority?.length || meta.authority.some((role) => roles.includes(role))
+    if (!allowed && !meta?.menuVisibleWithForbidden) return []
 
-    const children = route.children ? filterRoutesByAuthority(route.children, roles, forbiddenComponent) : void 0
+    const children = route.children ? filterRoutesByAuthority(route.children, roles, forbiddenComponent) : undefined
+    // 子路由全部被移除后，纯目录也应从注册路由中移除。403 入口仍有实际页面。
+    if (meta?.menuType === 'directory' && !hasAdminRouteTarget(route) && !children?.length && allowed) return []
 
     const nextRoute = { ...route } as RouteRecordRaw
-    if (isMenuVisibleWithForbidden(meta, roles)) {
+    if (!allowed) {
       nextRoute.component = forbiddenComponent
+      nextRoute.meta = { ...meta, menuType: 'menu' }
     }
 
     delete nextRoute.children
-    if (children?.length) {
-      nextRoute.children = children
-    }
-
+    if (children?.length) nextRoute.children = children
     return [nextRoute]
   })
-}
-
-function hasRouteAuthority(meta: AdminRouteMeta | undefined, roles: readonly string[]) {
-  const authority = meta?.authority
-  if (!authority?.length) return true
-
-  return authority.some((role) => roles.includes(role)) || Boolean(meta?.menuVisibleWithForbidden)
-}
-
-function isMenuVisibleWithForbidden(meta: AdminRouteMeta | undefined, roles: readonly string[]) {
-  const authority = meta?.authority
-  if (!authority?.length || !meta?.menuVisibleWithForbidden) return false
-
-  return !authority.some((role) => roles.includes(role))
 }

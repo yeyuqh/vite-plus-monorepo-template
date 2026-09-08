@@ -54,6 +54,8 @@ function mergeBackendMenuWithFileRoute(
       ...(iframeSrc ? { iframeSrc } : {}),
       ...(externalLink ? { externalLink } : {}),
       group,
+      menuId: menu.id,
+      menuType: menu.type ?? (fileRoute?.component || fileRoute?.components || fileRoute?.redirect || canCreateIframeRoute || canCreateExternalLinkRoute ? 'menu' : 'directory'),
       source: 'access',
     },
     path: resolveMergedRoutePath(parentPath, fullPath),

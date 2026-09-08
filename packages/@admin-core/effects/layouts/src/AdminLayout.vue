@@ -1,32 +1,29 @@
 <script setup lang="ts">
 import { Layout } from '@monorepo-admin-core/layout-ui'
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { AdminRouteContent } from './basic/content'
 import { LayoutHeader } from './basic/header'
 import { LayoutTabbar } from './basic/tabbar'
 import { LayoutMenu } from './basic/menu'
 import { buildAdminBreadcrumbPrefix, buildAdminBreadcrumbs } from './navigation/route-breadcrumb'
 import type { AdminCurrentRouteRecord } from './navigation/route-breadcrumb'
-import { buildAdminMenuGroups, markActiveAdminMenuGroups } from './navigation/route-menu'
+import { markActiveAdminMenuGroups } from './navigation/route-menu'
 import type { AdminMenuGroup, AdminNavigationRouteRecord, AdminRouteMeta } from '@monorepo-admin-core/types'
 
 const props = defineProps<{
-  menuGroups?: AdminMenuGroup[]
-  routeRecords?: AdminNavigationRouteRecord[]
+  menuGroups: AdminMenuGroup[]
+  routeRecords: AdminNavigationRouteRecord[]
   tabStorageKey?: string
 }>()
 
-const router = useRouter()
 const route = useRoute()
 const adminRoute = route as unknown as AdminCurrentRouteRecord
 
-// 把路由表和当前激活路径统一收口 避免模板层再次拼接路由语义
-const routeRecords = computed<AdminNavigationRouteRecord[]>(() => props.routeRecords ?? (router.getRoutes() as unknown as AdminNavigationRouteRecord[]))
 const activeMenuPath = computed(() => (route.meta as AdminRouteMeta).activePath ?? route.path)
 const breadcrumbPrefix = computed(() => buildAdminBreadcrumbPrefix(adminRoute))
-const breadcrumbs = computed(() => buildAdminBreadcrumbs(adminRoute, routeRecords.value))
-const menuGroups = computed(() => markActiveAdminMenuGroups(props.menuGroups ?? buildAdminMenuGroups(routeRecords.value), activeMenuPath.value))
+const breadcrumbs = computed(() => buildAdminBreadcrumbs(adminRoute, props.routeRecords))
+const menuGroups = computed(() => markActiveAdminMenuGroups(props.menuGroups, activeMenuPath.value))
 </script>
 
 <template>

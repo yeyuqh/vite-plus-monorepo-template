@@ -174,13 +174,13 @@ test('keeps hidden authorized child routes accessible without rendering them in 
 
 test('keeps visible third-level routes nested in the menu tree', () => {
   const result = resolveAdminAccess(accessFileRoutes, backendMenus, ['admin'])
-  const systemMenu = result.menuGroups.flatMap((group) => group.children).find((item) => item.id === '/system')
-  const settingsMenu = systemMenu?.children?.find((item) => item.id === '/system/settings')
+  const systemMenu = result.menuGroups.flatMap((group) => group.children).find((item) => item.id === 'system')
+  const settingsMenu = systemMenu?.children?.find((item) => item.id === 'system-settings')
 
   expect(result.routePathSet.has('/system/settings/overview')).toBe(true)
   expect(settingsMenu?.children).toContainEqual(
     expect.objectContaining({
-      id: '/system/settings/overview',
+      id: 'system-settings-level-three',
       path: '/system/settings/overview',
       title: '设置概览',
     }),

@@ -1,5 +1,4 @@
 import type { AdminBackendMenu, AdminMenuGroup, AdminNavigationRouteRecord } from '@monorepo-admin-core/types'
-import type { RouteRecordRaw } from 'vue-router'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -12,7 +11,6 @@ export const useAdminAccessStore = defineStore('admin-access', () => {
   const router = useRouter()
   const accessToken = ref<string | null>(localStorage.getItem(ADMIN_ACCESS_TOKEN_STORAGE_KEY))
   const sessionVersion = ref(0)
-  const accessibleRoutes = ref<RouteRecordRaw[]>([])
   const isAccessInitialized = ref(false)
   const menuGroups = ref<AdminMenuGroup[]>([])
   const navigationRoutes = ref<AdminNavigationRouteRecord[]>([])
@@ -29,7 +27,6 @@ export const useAdminAccessStore = defineStore('admin-access', () => {
 
     registerAdminAccessRoutes(router, resolvedAccess.accessibleRoutes)
     matchesAccessiblePath = createAdminRoutePathMatcher(resolvedAccess.accessibleRoutes)
-    accessibleRoutes.value = resolvedAccess.accessibleRoutes
     menuGroups.value = resolvedAccess.menuGroups
     navigationRoutes.value = resolvedAccess.navigationRoutes
     permissionCodes.value = [...nextPermissionCodes]
@@ -89,7 +86,6 @@ export const useAdminAccessStore = defineStore('admin-access', () => {
 
   function resetAccessState() {
     matchesAccessiblePath = () => false
-    accessibleRoutes.value = []
     isAccessInitialized.value = false
     menuGroups.value = []
     navigationRoutes.value = []
