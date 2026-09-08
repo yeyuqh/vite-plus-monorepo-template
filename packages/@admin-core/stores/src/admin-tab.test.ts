@@ -175,3 +175,59 @@ function createRecord(path: string, options: Partial<AdminTabRecord> = {}): Admi
     ...options,
   }
 }
+
+test('evicts the earliest tab of the same route name and clears its cached state', () => {
+  const store = useAdminTabStore()
+  const detail = (id: number) => ({ ...createRecord(`/users/${id}`), routeName: 'UserDetail', keepAlive: true, meta: { title: 'User', maxNumOfOpenTab: 2 } })
+  store.initialize(STORAGE_KEY, [createRecord('/home'), detail(1), detail(2)])
+  store.setActive('/users/1')
+  store.refresh('/users/1')
+  store.setScrollPositions('/users/1', { content: { top: 100, left: 0 } })
+  store.upsert(detail(3))
+  expect(store.records.map(({ key }) => key)).toEqual(['/home', '/users/2', '/users/3'])
+  expect(store.activeKey).toBe('/users/3')
+  expect(store.hasRendered('/users/1')).toBe(false)
+  expect(store.refreshVersions['/users/1']).toBeUndefined()
+  expect(store.getScrollPositions('/users/1')).toEqual({})
+  expect(store.readPersistedTabs(STORAGE_KEY).map(({ viewPath }) => viewPath)).toEqual(['/home', '/users/2', '/users/3'])
+})
+
+test('updating a shared key does not evict tabs even when its route limit is reached', () => {
+  const store = useAdminTabStore()
+  const shared = { ...createRecord('/detail'), routeName: 'Detail', meta: { title: 'Detail', maxNumOfOpenTab: 1 } }
+  store.initialize(STORAGE_KEY, [shared, createRecord('/home')])
+  store.upsert({ ...shared, viewPath: '/users/2?pageKey=detail' })
+  expect(store.records).toHaveLength(2)
+  expect(store.records[0]?.viewPath).toBe('/users/2?pageKey=detail')
+})
+
+test('applies per-route limits when restoring tabs', () => {
+  const store = useAdminTabStore()
+  store.initialize(
+    STORAGE_KEY,
+    [1, 2, 3].map((id) => ({ ...createRecord(`/users/${id}`), routeName: 'Detail', meta: { title: 'Detail', maxNumOfOpenTab: 1 } })),
+  )
+  expect(store.records.map(({ key }) => key)).toEqual(['/users/3'])
+})
+
+test.each(['__proto__', 'constructor'])('handles arbitrary shared pageKey %s in cache state', (key) => {
+  const store = useAdminTabStore()
+  store.initialize(STORAGE_KEY, [{ ...createRecord('/users/1'), key, keepAlive: true }])
+  expect(store.getRenderKey(key)).toBe(`${key}:0`)
+  expect(store.getScrollPositions(key)).toEqual({})
+  store.refresh(key)
+  expect(store.getRenderKey(key)).toBe(`${key}:1`)
+  store.setScrollPositions(key, { body: { top: 20, left: 0 } })
+  expect(store.getScrollPositions(key)).toEqual({ body: { top: 20, left: 0 } })
+})
+
+test('replacing a shared key clears the previous page iframe and route identity', () => {
+  const store = useAdminTabStore()
+  store.initialize(STORAGE_KEY, [{ ...createRecord('/frame'), key: 'shared', iframeSrc: 'https://example.com', routeName: 'Frame' }])
+  store.upsert({ ...createRecord('/page'), key: 'shared' })
+  expect(store.records).toHaveLength(1)
+  expect(store.activeRecord).toBeUndefined()
+  expect(store.records[0]?.iframeSrc).toBeUndefined()
+  expect(store.records[0]?.routeName).toBeUndefined()
+  expect(store.records[0]?.viewPath).toBe('/page')
+})

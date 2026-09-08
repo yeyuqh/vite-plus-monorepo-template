@@ -235,3 +235,33 @@ test('does not close the final remaining tab', () => {
     tabs: [{ key: '/dashboard/workbench', title: '工作台', to: '/dashboard/workbench' }],
   })
 })
+
+test('reuses pageKey across different ids while retaining the current address and title', () => {
+  const first = createAdminTabRecord({ name: 'Detail', path: '/users/1', fullPath: '/users/1?pageKey=user-detail', query: { pageKey: 'user-detail' }, meta: { title: 'User 1' } })!
+  const second = createAdminTabRecord({ name: 'Detail', path: '/users/2', fullPath: '/users/2?pageKey=user-detail', query: { pageKey: 'user-detail' }, meta: { title: 'User 2' } })!
+  const tabs = upsertAdminTab([first], second)
+  expect(tabs).toHaveLength(1)
+  expect(tabs[0]).toMatchObject({ key: 'user-detail', title: 'User 2', to: '/users/2?pageKey=user-detail', viewPath: '/users/2?pageKey=user-detail', routeName: 'Detail' })
+})
+
+test('fullPathKey false ignores query and hash but still separates different ids', () => {
+  const record = (path: string) => createAdminTabRecord({ path, meta: { title: 'Detail', fullPathKey: false } })!
+  const tabs = upsertAdminTab([record('/users/1?a=1#top')], record('/users/1?a=2#bottom'))
+  expect(tabs).toHaveLength(1)
+  expect(tabs[0]).toMatchObject({ key: '/users/1', to: '/users/1?a=2#bottom' })
+  expect(upsertAdminTab(tabs, record('/users/2'))).toHaveLength(2)
+})
+
+test.each([
+  ['first', ['first', 'second']],
+  ['/details', '%2Fdetails'],
+  ['%invalid', '%invalid'],
+  ['/users/1', ''],
+])('resolves pageKey to %s safely', (key, pageKey) => {
+  expect(createAdminTab({ path: '/users/1', query: { pageKey }, meta: { title: 'Detail', fullPathKey: false } })?.key).toBe(key)
+})
+
+test('explicit key options take precedence over legacy tabPath without inheriting the list title', () => {
+  const route = { path: '/users/1', fullPath: '/users/1?pageKey=detail', query: { pageKey: 'detail' }, tabPath: '/users', meta: { title: 'Detail', fullPathKey: false } }
+  expect(createAdminTab(route, { resolveRoute: () => ({ path: '/users', meta: { title: 'List' } }) })).toMatchObject({ key: 'detail', title: 'Detail', to: '/users/1?pageKey=detail' })
+})

@@ -85,7 +85,10 @@ export function useAdminTabbar(options: UseAdminTabbarOptions = {}) {
     return createAdminTabRecord(
       {
         meta: route.meta as AdminRouteMeta,
-        path: route.fullPath,
+        name: route.name,
+        path: route.path,
+        fullPath: route.fullPath,
+        query: route.query,
         tabPath: resolveRouteTabPath(route),
       },
       {
@@ -120,7 +123,10 @@ function createTabRecordFromPath(path: string, router: Router) {
   return createAdminTabRecord(
     {
       meta: resolved.meta as AdminRouteMeta,
-      path: resolved.fullPath,
+      name: resolved.name,
+      path: resolved.path,
+      fullPath: resolved.fullPath,
+      query: resolved.query,
       tabPath: resolveRouteTabPath(resolved),
     },
     {
@@ -142,5 +148,5 @@ function resolveRouteTabPath(route: Pick<RouteLocationNormalizedLoaded, 'fullPat
     return normalizeAdminNavigationPath(route.meta.tabPath)
   }
 
-  return route.fullPath
+  return undefined
 }

@@ -1,6 +1,35 @@
 import type { AdminNavigationRouteRecord, AdminTabItem, AdminTabRecord } from '@monorepo-admin-core/types'
 import { platform } from '@monorepo/shared/utils'
 
+export interface AdminTabRouteRecord extends AdminNavigationRouteRecord {
+  name?: string | symbol | null
+  fullPath?: string
+  query?: Record<string, string | null | (string | null)[]>
+}
+
+function pageKeyOf(route: AdminTabRouteRecord) {
+  const fullPath = route.fullPath ?? route.path
+  const query = fullPath.split('#')[0]?.split('?')[1] ?? ''
+  const pageKey = route.query ? route.query.pageKey : new URLSearchParams(query).get('pageKey')
+  return Array.isArray(pageKey) ? pageKey[0] : pageKey
+}
+
+function legacyTabPath(route: AdminTabRouteRecord) {
+  // pageKey 和 fullPathKey 优先；未显式配置标识规则时继续支持 tabPath。
+  return !pageKeyOf(route) && route.meta.fullPathKey === undefined ? (route.tabPath ?? route.meta.tabPath) : undefined
+}
+
+/** pageKey 优先，其次按 fullPathKey 选择路径或完整地址。 */
+export function getAdminTabKey(route: AdminTabRouteRecord): string {
+  const fullPath = route.fullPath ?? route.path
+  const rawKey = pageKeyOf(route) || (route.meta.fullPathKey === false ? (route.path.split(/[?#]/)[0] ?? '/') : (legacyTabPath(route) ?? fullPath))
+  try {
+    return decodeURIComponent(rawKey)
+  } catch {
+    return rawKey
+  }
+}
+
 /** 创建标签页时的路由解析选项 */
 export interface CreateAdminTabOptions {
   /** 用于解析父级 `Tab` 对应的真实路由 */
@@ -21,19 +50,19 @@ export interface CloseAdminTabResult<T extends AdminTabItem = AdminTabItem> {
  * @param options 用于解析父级 `Tab` 的选项
  * @returns 标签页定义，当前路由不应显示在标签栏时返回 `undefined`
  */
-export function createAdminTab(route: AdminNavigationRouteRecord, options: CreateAdminTabOptions = {}): AdminTabItem | undefined {
+export function createAdminTab(route: AdminTabRouteRecord, options: CreateAdminTabOptions = {}): AdminTabItem | undefined {
   if (route.meta.externalLink || route.meta.hideInTab) return void 0
 
-  const tabTarget = route.tabPath ?? route.meta.tabPath ?? route.path
+  const tabTarget = legacyTabPath(route) ?? route.fullPath ?? route.path
   // 使用解析后的父级路由补全标签标题和图标
-  const resolvedRoute = tabTarget !== route.path ? (options.resolveRoute?.(tabTarget) ?? route) : route
+  const resolvedRoute = legacyTabPath(route) && tabTarget !== route.path ? (options.resolveRoute?.(tabTarget) ?? route) : route
   const title = resolvedRoute?.meta.title ?? route.meta.title
 
   if (!title) return void 0
 
   return {
     icon: resolvedRoute?.meta.icon ?? route.meta.icon,
-    key: tabTarget,
+    key: getAdminTabKey(route),
     showActiveTabBorder: resolvedRoute?.meta.showActiveTabBorder ?? route.meta.showActiveTabBorder,
     title,
     to: tabTarget,
@@ -46,7 +75,7 @@ export function createAdminTab(route: AdminNavigationRouteRecord, options: Creat
  * @param options 用于解析父级 `Tab` 的选项
  * @returns 完整标签页记录，当前路由不应显示在标签栏时返回 `undefined`
  */
-export function createAdminTabRecord(route: AdminNavigationRouteRecord, options: CreateAdminTabOptions = {}): AdminTabRecord | undefined {
+export function createAdminTabRecord(route: AdminTabRouteRecord, options: CreateAdminTabOptions = {}): AdminTabRecord | undefined {
   const tab = createAdminTab(route, options)
   if (!tab) return void 0
 
@@ -54,10 +83,11 @@ export function createAdminTabRecord(route: AdminNavigationRouteRecord, options:
 
   return {
     ...tab,
+    ...(route.name != null ? { routeName: route.name } : {}),
     ...(iframeSrc ? { iframeSrc } : {}),
     keepAlive: !platform.is.mobile && route.meta.keepAlive === true,
     meta: { ...route.meta },
-    viewPath: route.path,
+    viewPath: route.fullPath ?? route.path,
   }
 }
 

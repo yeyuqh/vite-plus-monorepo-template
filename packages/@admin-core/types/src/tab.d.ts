@@ -25,6 +25,8 @@ export interface AdminTabItem {
  * 展示的路由。两者分离后，配置了 `tabPath` 的嵌套路由也能恢复正确内容。
  */
 export interface AdminTabRecord extends AdminTabItem {
+  /** 用于按动态路由统计打开数量，不参与 Tab 唯一标识 */
+  routeName?: string | symbol
   /** iframe 页面地址，普通页面为空 */
   iframeSrc?: string
   /** 当前标签页是否保留运行状态 */

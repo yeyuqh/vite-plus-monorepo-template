@@ -1,6 +1,6 @@
 import type { AdminTabRecord, PersistedAdminTab } from '@monorepo-admin-core/types'
 import { defineStore } from 'pinia'
-import { closeAdminTab, markActiveAdminTabs, upsertAdminTab } from './route-tab'
+import { closeAdminTab, markActiveAdminTabs } from './route-tab'
 
 /** 持久化快照的版本号 */
 const PERSISTENCE_VERSION = 1
@@ -128,7 +128,16 @@ export const useAdminTabStore = defineStore('admin-layout-tabs', {
      * @param record 待写入的 `AdminTabRecord`
      */
     upsert(record: AdminTabRecord) {
-      this.records = upsertAdminTab(this.records, record) as AdminTabRecord[]
+      const nextRecords = upsertRecord(this.records, record)
+      const evictedActive = this.records.some((item) => item.key === this.activeKey) && !nextRecords.some((item) => item.key === this.activeKey)
+      for (const previous of this.records) {
+        if (nextRecords.some((item) => item.key === previous.key)) continue
+        this.renderedKeys.delete(previous.key)
+        delete this.refreshVersions[previous.key]
+        clearScrollPositions(this, previous.key)
+      }
+      this.records = nextRecords
+      if (evictedActive) this.activeKey = record.key
       persistTabs(this)
     },
 
@@ -164,7 +173,8 @@ export const useAdminTabStore = defineStore('admin-layout-tabs', {
     refresh(key: string) {
       if (!this.records.some((item) => item.key === key)) return
 
-      this.refreshVersions[key] = (this.refreshVersions[key] ?? 0) + 1
+      const version = Object.hasOwn(this.refreshVersions, key) ? this.refreshVersions[key]! : 0
+      this.refreshVersions = { ...this.refreshVersions, [key]: version + 1 }
       clearScrollPositions(this, key)
     },
 
@@ -173,7 +183,7 @@ export const useAdminTabStore = defineStore('admin-layout-tabs', {
      * @returns 由标签 `key` 和刷新版本号组成的渲染 `key`
      */
     getRenderKey(key: string) {
-      return `${key}:${this.refreshVersions[key] ?? 0}`
+      return `${key}:${Object.hasOwn(this.refreshVersions, key) ? this.refreshVersions[key] : 0}`
     },
 
     /** 判断标签页是否已经渲染过
@@ -199,7 +209,7 @@ export const useAdminTabStore = defineStore('admin-layout-tabs', {
      * @returns 以滚动元素标识为 `key` 的位置映射
      */
     getScrollPositions(key: string) {
-      return this.scrollPositions[key] ?? {}
+      return Object.hasOwn(this.scrollPositions, key) ? this.scrollPositions[key]! : {}
     },
 
     /** 重置内存中的标签页状态并按配置清理持久化数据
@@ -228,7 +238,20 @@ export const useAdminTabStore = defineStore('admin-layout-tabs', {
  * @returns 去重后的标签页记录
  */
 function dedupeRecords(records: readonly AdminTabRecord[]) {
-  return records.reduce<AdminTabRecord[]>((result, record) => upsertAdminTab(result, record) as AdminTabRecord[], [])
+  return records.reduce<AdminTabRecord[]>((result, record) => upsertRecord(result, record), [])
+}
+
+function upsertRecord(records: readonly AdminTabRecord[], record: AdminTabRecord): AdminTabRecord[] {
+  // 运行时记录是完整快照；复用 key 时替换，避免遗留上一页的 iframeSrc 或 routeName。
+  const existingIndex = records.findIndex((item) => item.key === record.key)
+  if (existingIndex !== -1) return records.map((item, index) => (index === existingIndex ? record : item))
+  const limit = record.meta.maxNumOfOpenTab ?? -1
+  let remaining = [...records]
+  if (limit > 0) {
+    const siblings = records.filter((item) => item.routeName === record.routeName)
+    if (siblings.length >= limit) remaining = remaining.filter((item) => item.key !== siblings[0]?.key)
+  }
+  return [...remaining, record]
 }
 
 /** 将当前标签页写入最小化的持久化快照
